@@ -4,7 +4,7 @@ If you care about how it works, keep reading!
 
 = Overview =
 
-I'm not sure when it happened but MLB.tv started using Apple's HTTP Live Streaming Service (aka HLS) to transmit games in HD.  Their web plugin (autobahn) is nothing but a RTMP <-> HLS proxy.  
+I'm not sure when it happened but MLB.tv started using Apple's HTTP Live Streaming Service (aka HLS) to transmit games in HD.  Their web plugin (autobahn) is nothing but a RTMP to HLS proxy.  
 
 = HLS =
 
@@ -23,5 +23,6 @@ The variety of MPEG-TS used in HLS only really supports MPEG1/2, MPEG4 (part2 an
 
 MPEG-TS supports MP2/MP3, AC3, and AAC.  AAC is probably what's being used in most HLS setups. (And is being used by MLB.tv)
 
+= Encryption =
 
-
+TODO
