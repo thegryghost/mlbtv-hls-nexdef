@@ -1,0 +1,8 @@
+#About
+
+= Introduction =
+
+This app uses cURL and OpenSSL to connect to MLB.tv and play/save baseball games in Linux (and probably other OS's).  I wrote this because I really love my baseball and I really love my baseball in HD.
+
+The code isn't pretty but it gets the job done.  I tried implementing bitrate switching but I haven't have time to test it so it probably doesn't work.
+
