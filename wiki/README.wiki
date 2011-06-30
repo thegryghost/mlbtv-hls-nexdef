@@ -1,8 +1,12 @@
-#About
-
 = Introduction =
 
 This app uses cURL and OpenSSL to connect to MLB.tv and play/save baseball games in Linux (and probably other OS's).  I wrote this because I really love my baseball and I really love my baseball in HD.
 
 The code isn't pretty but it gets the job done.  I tried implementing bitrate switching but I haven't have time to test it so it probably doesn't work.
 
+You also *need* a valid and paid for MLB.tv account to make this work.
+
+
+= How to use =
+
+First you need to checkout the source and compile.  Remember to have cURL and OpenSSL installed on your system.  Running 'make' should do it.  After that, you need to use this in conjunction with [http://mlbviewer.sourceforge.net/ mlbviewer].  
