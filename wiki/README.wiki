@@ -9,7 +9,18 @@ You also *need* a valid and paid for MLB.tv account to make this work.
 
 = How to use =
 
-First you need to checkout the source and compile.  Remember to have cURL and OpenSSL installed on your system.  Next, running 'make' where you check'ed the source to will compile it and generate an executable called *mlb*.  
+First you need to checkout the source and compile.  Remember to have cURL, OpenSSL, and libconfig installed on your system.  
+
+If you're under Ubuntu, install the following:
+
+libcurl4-openssl-dev
+libconfig8-dev
+
+If you're under Gentoo:
+
+emerge net-misc/curl dev-libs/libconfig dev-libs/openssl
+
+Next, running 'make' where you check'ed the source to will compile it and generate an executable called *mlb*.  
 
 After that, you need to use this in conjunction with [http://mlbviewer.sourceforge.net/ mlbviewer].  After you've setup mlbviewer, you'll need to run the mlbplay.py app and get a Base64 encoded url:
 
