@@ -9,4 +9,20 @@ You also *need* a valid and paid for MLB.tv account to make this work.
 
 = How to use =
 
-First you need to checkout the source and compile.  Remember to have cURL and OpenSSL installed on your system.  Running 'make' should do it.  After that, you need to use this in conjunction with [http://mlbviewer.sourceforge.net/ mlbviewer].  
+First you need to checkout the source and compile.  Remember to have cURL and OpenSSL installed on your system.  Running 'make' should do it.  After that, you need to use this in conjunction with [http://mlbviewer.sourceforge.net/ mlbviewer].  After you've setup mlbviewer, you'll need to run the mlbplay.py app and get a Base64 encoded url:
+
+python mlbplay.py v=nym n=1 nu=1
+
+You may need to edit the mlbplay.py app at or around line 237 and comment out the sys.exit() :
+{{{
+        print 'An error occurred locating the media URL:'
+        print g.error_str
+        sys.exit()
+}}}
+
+become
+{{{
+        print 'An error occurred locating the media URL:'
+        print g.error_str
+        #sys.exit()
+}}}
