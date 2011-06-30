@@ -26,3 +26,18 @@ become
         print g.error_str
         #sys.exit()
 }}}
+
+You may see an error about locating the media URL but this isn't a problem.  What you are concerned with is the Base64 encoded string.  This is what I get:
+
+{{{
+An error occurred locating the media URL:
+Could not parse NexDef stream list.  Try alternate coverage.
+
+RTSP/1.0 400 Bad Request
+Server: DSS/6.0.3 (Build/526.3; Platform/Linux; Release/Darwin Streaming Server; State/Development; )
+Cseq: 
+Connection: Close
+
+
+start_of_b64_str_axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.....................xxxxxxxxxxxxxxxxxxxxxx
+}}}
