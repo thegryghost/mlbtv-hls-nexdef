@@ -1,5 +1,5 @@
-#ifndef CL_MPEG_OUTPUT
-#define CL_MPEG_OUTPUT
+#ifndef MPEG_OUTPUT
+#define MPEG_OUTPUT
 
 #include <stdint.h>
 #include <sys/socket.h>
