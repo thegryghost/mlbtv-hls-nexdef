@@ -9,7 +9,9 @@ You also *need* a valid and paid for MLB.tv account to make this work.
 
 = How to use =
 
-First you need to checkout the source and compile.  Remember to have cURL and OpenSSL installed on your system.  Running 'make' should do it.  After that, you need to use this in conjunction with [http://mlbviewer.sourceforge.net/ mlbviewer].  After you've setup mlbviewer, you'll need to run the mlbplay.py app and get a Base64 encoded url:
+First you need to checkout the source and compile.  Remember to have cURL and OpenSSL installed on your system.  Next, running 'make' where you check'ed the source to will compile it and generate an executable called *mlb*.  
+
+After that, you need to use this in conjunction with [http://mlbviewer.sourceforge.net/ mlbviewer].  After you've setup mlbviewer, you'll need to run the mlbplay.py app and get a Base64 encoded url:
 
 python mlbplay.py v=nym n=1 nu=1
 
