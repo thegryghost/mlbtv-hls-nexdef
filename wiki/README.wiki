@@ -80,3 +80,16 @@ of if you want to use vdpau:
 {{{
 mplayer -demuxer lavf -vo vdpau -vc ffh264vdpau output.ts
 }}}
+
+
+= Options =
+
+-f = Which Block to start at.  If the game is still in progress and -f is 0, it will be the most current block (live).  If you specify non-zero, it will start reading from the beginning with each block being about 10 seconds, so -f 5 will start 50 seconds from when MLB.tv started streaming.
+
+-b = Max bitrate to use, you should be able to choose from:
+:4500000
+:3000000
+:1800000
+:1200000
+:800000
+:500000
