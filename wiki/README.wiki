@@ -45,8 +45,38 @@ start_of_b64_str_axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.................
 If you do not see the base64 string then you may need to comment out the sys.exit() above.
 
 
-Now that you have the string, run the 'mlb' app passing in the base64 string with the -B param:
+Now that you have the string, run the 'mlb' app passing in the base64 string with the -B param.  This example will save the mlb video stream to a file called output.ts:
 
 {{{
 ./mlb -o output.ts -B start_of_b64_str_axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.....................xxxxxxxxxxxxxxxxxxxxxx 
+}}}
+
+If all goes well, you will see:
+
+{{{
+[MLB] Reading cfg file: mlb.cfg
+[MLB] Output file: tmp.ts
+[MLB] Max. Bandwidth: 0(bps)
+[MLB] Bandwidth Locking: 1
+[MLB] Fetching Master URL...
+[MLB] Current Priority: 7 (bw: 4500000)
+[MLB] Playlist refresh time: 20 (s)
+-- SZ: 0
+[MLB] Setting stream start time to (epoch): 1309396084
+[MLB] Start fetching video from line: 3677 (3702)
+[MLB] bytes decrypted: 3517292 (6s) -- xx/yy/0001.ts (time: 1 -- 1)
+[MLB] bytes decrypted: 7035148 (12s) -- xx/yy/0002.ts (time: 1 -- 2)
+
+}}}
+
+Then play output.ts with mplayer:
+
+{{{
+mplayer -demuxer lavf output.ts
+}}}
+
+of if you want to use vdpau:
+
+{{{
+mplayer -demuxer lavf -vo vdpau -vc ffh264vdpau output.ts
 }}}
