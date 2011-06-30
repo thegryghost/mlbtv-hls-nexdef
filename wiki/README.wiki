@@ -85,6 +85,8 @@ mplayer -demuxer lavf -vo vdpau -vc ffh264vdpau output.ts
 = Options =
 -B = Base64 Encoded String
 
+-o = Output filename.  You can use '-' for stdout.
+
 -f = Which Block to start at.  If the game is still in progress and -f is 0, it will be the most current block (live).  If you specify non-zero, it will start reading from the beginning with each block being about 6 seconds, so -f 5 will start 30 seconds from when MLB.tv started streaming.
 
 -b = Max bitrate to use, you should be able to choose from:
