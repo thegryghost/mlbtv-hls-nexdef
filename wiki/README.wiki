@@ -41,3 +41,12 @@ Connection: Close
 
 start_of_b64_str_axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.....................xxxxxxxxxxxxxxxxxxxxxx
 }}}
+
+If you do not see the base64 string then you may need to comment out the sys.exit() above.
+
+
+Now that you have the string, run the 'mlb' app passing in the base64 string with the -B param:
+
+{{{
+./mlb -o output.ts -B start_of_b64_str_axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.....................xxxxxxxxxxxxxxxxxxxxxx 
+}}}
