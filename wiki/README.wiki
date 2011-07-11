@@ -58,10 +58,10 @@ start_of_b64_str_axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.................
 If you do not see the base64 string then you may need to comment out the sys.exit() above.
 
 
-Now that you have the string, run the 'mlb' app passing in the base64 string with the -B param.  This example will save the mlb video stream to a file called output.ts:
+Now that you have the string, run the 'mlbhls' app passing in the base64 string with the -B param.  This example will save the mlb video stream to a file called output.ts:
 
 {{{
-./mlb -o output.ts -B start_of_b64_str_axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.....................xxxxxxxxxxxxxxxxxxxxxx 
+./mlbhls -o output.ts -B start_of_b64_str_axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.....................xxxxxxxxxxxxxxxxxxxxxx 
 }}}
 
 If all goes well, you will see:
