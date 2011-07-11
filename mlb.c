@@ -854,7 +854,7 @@ void display_usage(char *exe)
     printf("\n\t-V, --verbose\t\t\tVerbose output (big V, use multiple times to increase verbosity)\n");
 }
 
-static const char *optString = "B:o:s:c:p:L:l:f:b:r:?Vh";
+static const char *optString = "B:o:s:c:p:l:f:b:r:?VhL";
 
 static const struct option longOpts[] =
 {
@@ -893,9 +893,8 @@ uint8_t get_opts(int argc, char *const argv[], MLB_OPT_ARGS *opts)
 				break;
 
 			case 'L':
-				printf("moo?: %s\n", optarg);
-				if (optarg)
-					opts->lock_bandwidth = atoi(optarg);
+//				if (optarg)
+					opts->lock_bandwidth = !opts->lock_bandwidth;
 				break;
 
 			case 'c':
