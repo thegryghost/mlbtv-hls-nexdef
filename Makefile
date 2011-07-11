@@ -6,8 +6,9 @@ mlb = mlb
 
 all: mlb
 
-mlb:mlb.c utils.c output.c $(LIBS)
+mlb:
+	 $(CC) $(CFLAGS) mlb.c utils.c output.c $(LIBS) -o mlbhls
 
 clean:
-	rm -f *.o mlb
+	rm -f *.o mlbhls
 
