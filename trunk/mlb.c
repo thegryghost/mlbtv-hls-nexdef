@@ -21,7 +21,7 @@
 #define HLS_CFG_PLAYER_CMD					"player_cmd"
 #define HLS_CFG_LW_CMD						"lw_time"
 
-#define HLS_PLAYLIST_REFRESH_TIME			20
+#define HLS_PLAYLIST_REFRESH_TIME			12
 
 #define HLS_START_MARKER					"#EXTM3U"
 #define HLS_KEY_MARKER						"#EXT-X-KEY:"
@@ -987,7 +987,7 @@ int main (int argc, char *argv[])
 {
 	MLB_OPT_ARGS *mlb_args;
 	int i=0;
-
+	time_t last_segtime1 = 0, last_segtime2 = 0; 
 
 	mlb_args = calloc(1, sizeof(MLB_OPT_ARGS));
 
@@ -1123,7 +1123,7 @@ int main (int argc, char *argv[])
 										{
 											int j;
 											if (mlb_master_switch_bw(master, 1))
-												printf("[MLB] --------- Stepping down bandwidth\n");
+												printf("[MLB] --------- Stepping down bandwidth: 1\n");
 
 											master->streams[i].priority = -1;
 
@@ -1161,14 +1161,23 @@ int main (int argc, char *argv[])
 											d = mlb_hls_get_and_decrypt(&p, tmp);
 											t_stop = time(NULL);
 
+
+											last_segtime2 = last_segtime1;
+											last_segtime1 = (t_stop - t_start);
 											if (master->seg_count > 1)
 											{
 												master->seg_ftime += (t_stop - t_start);
-//												printf("SEGTIME AVG: %ld (%ld %d)\n", master->seg_ftime  / (long)master->seg_count, master->seg_ftime, master->seg_count);
-												if (!master->args->lock_bandwidth)
+												printf("SEGTIME AVG: %ld (%ld %d, Single Segtime: %d)\n", master->seg_ftime  / (long)master->seg_count, (t_stop - t_start), master->seg_count, p.stream->seg_time);
+												if (!master->args->lock_bandwidth && p.stream->seg_time)
 												{
-													if (master->seg_ftime  / (long)master->seg_count > master->streams[i].seg_time)
+//													if (master->seg_ftime  / (long)master->seg_count > master->streams[i].seg_time)
+													if (t_stop - t_start  > p.stream->seg_time)
 													{
+
+														master->seg_fspike = 0;
+														if (mlb_master_switch_bw(master, 1))
+															printf("[MLB] --------- Stepping down bandwidth: 2\n");
+/*
 														master->seg_fgood = 0;
 														master->seg_fspike++;
 
@@ -1178,9 +1187,16 @@ int main (int argc, char *argv[])
 															if (mlb_master_switch_bw(master, 1))
 																printf("[MLB] --------- Stepping down bandwidth\n");
 														}
+*/
 													}
 													else
 													{
+
+														master->seg_fgood = 0;
+														if ((last_segtime1 + last_segtime2)/2 < p.stream->seg_time)
+															if (mlb_master_switch_bw(master, 0))
+																printf("[MLB] --------- Stepping up bandwidth: 2\n");
+/*
 														master->seg_fspike = 0;
 														master->seg_fgood++;
 														if (master->seg_fgood > 3)
@@ -1189,6 +1205,7 @@ int main (int argc, char *argv[])
 															if (mlb_master_switch_bw(master, 0))
 																printf("[MLB] --------- Stepping up bandwidth\n");
 														}
+*/
 													}
 												}
 												//else
@@ -1200,8 +1217,10 @@ int main (int argc, char *argv[])
 												master->decrypted_size += d;
 												master->decrypted_count++;
 												printf("[MLB] bytes decrypted: %d (%ds) -- %s (time: %ld -- %d)\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (t_stop - t_start), master->seg_count);
+												printf("MO: %s\n", master->args->launch_cmd);
 												if (master->args->launch_cmd && strlen(master->args->launch_cmd) > 2)
 												{
+													printf("HEre\n");
 													if (!master->cmd_thread && p.stream->seg_time * master->decrypted_count >= master->args->launch_wait)
 													{
 														sprintf(master->cmd_params, "%s -cache %d %s\0", master->args->launch_cmd, 4*(master->decrypted_size/(p.stream->seg_time * master->decrypted_count)) / 1000, master->args->output.name);
