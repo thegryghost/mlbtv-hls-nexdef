@@ -987,7 +987,7 @@ int main (int argc, char *argv[])
 {
 	MLB_OPT_ARGS *mlb_args;
 	int i=0;
-	time_t last_segtime1 = 0, last_segtime2 = 0; 
+	time_t last_segtime1 = 0, last_segtime2 = 0;
 
 	mlb_args = calloc(1, sizeof(MLB_OPT_ARGS));
 
@@ -1167,7 +1167,7 @@ int main (int argc, char *argv[])
 											if (master->seg_count > 1)
 											{
 												master->seg_ftime += (t_stop - t_start);
-												printf("SEGTIME AVG: %ld (%ld %d, Single Segtime: %d)\n", master->seg_ftime  / (long)master->seg_count, (t_stop - t_start), master->seg_count, p.stream->seg_time);
+												//printf("SEGTIME AVG: %ld (%ld %d, Single Segtime: %d)\n", master->seg_ftime  / (long)master->seg_count, (t_stop - t_start), master->seg_count, p.stream->seg_time);
 												if (!master->args->lock_bandwidth && p.stream->seg_time)
 												{
 //													if (master->seg_ftime  / (long)master->seg_count > master->streams[i].seg_time)
