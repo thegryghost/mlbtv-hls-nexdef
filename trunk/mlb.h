@@ -49,6 +49,7 @@ struct mlb_opt_args
 {
 	OUTPUT_STRUCT output;
 	int bandwidth_max;
+	int bandwidth_min;
 	int bandwidth_start;
 	int lock_bandwidth;
 	int refresh_time;

@@ -668,9 +668,10 @@ int mlb_master_switch_bw(MLB_HLS_MASTER_URL * master, int down)
 			if (master->streams[j].priority != -1 && master->streams[j].priority == prio)
 				break;
 
-		if (!(j >=  master->stream_count))
+		printf("Minimum bandiwdth: %d\n", master->args->bandwidth_min);
+		if (!(j >=  master->stream_count) && master->streams[j].bandwidth >= master->args->bandwidth_min)
 		{
-			printf("debug, switching from: %d, switching down to: %d (%d)\n", master->streams[master->current_priority].bandwidth,  master->streams[j].bandwidth, j);
+			printf("debug, switching from: %d, switching to: %d (%d)\n", master->streams[master->current_priority].bandwidth,  master->streams[j].bandwidth, j);
 			master->current_priority = j;
 			master->current_iv = mlb_getiv_from_pos(&master->streams[j], master->last_key_line);
 			master->current_iv->aes = (uint8_t *)&master->streams[j].aes_key;
@@ -854,13 +855,14 @@ void display_usage(char *exe)
     printf("\n\t-V, --verbose\t\t\tVerbose output (big V, use multiple times to increase verbosity)\n");
 }
 
-static const char *optString = "B:o:s:c:p:l:f:b:r:?VhL";
+static const char *optString = "B:o:s:c:p:l:f:b:m:r:?VhL";
 
 static const struct option longOpts[] =
 {
 	{ "output", required_argument, NULL, 'o' },
 	{ "base64", required_argument, NULL, 'B' },
 	{ "bitrate", optional_argument, NULL, 'b' },
+	{ "mbit", optional_argument, NULL, 'b' },
 	{ "sbitrate", optional_argument, NULL, 's' },
 	{ "refresh", optional_argument, NULL, 'r' },
 	{ "cfg", optional_argument, NULL, 'c' },
@@ -949,6 +951,10 @@ uint8_t get_opts(int argc, char *const argv[], MLB_OPT_ARGS *opts)
 				opts->bandwidth_max = atoi(optarg);
 				break;
 
+			case 'm':
+				opts->bandwidth_min = atoi(optarg);
+				break;
+
 			case 's':
 				opts->bandwidth_start = atoi(optarg);
 				break;
@@ -1018,6 +1024,7 @@ int main (int argc, char *argv[])
 		{
 			printf("[MLB] Output file: %s\n", mlb_args->output.name);
 			printf("[MLB] Max. Bandwidth: %d(bps)\n", mlb_args->bandwidth_max);
+			printf("[MLB] Min. Bandwidth: %d(bps)\n", mlb_args->bandwidth_min);
 			printf("[MLB] Bandwidth Locking: %d\n", mlb_args->lock_bandwidth);
 			if (strlen(mlb_args->proxy_addr) > 5)
 				printf("[MLB] Using proxy: %s\n", mlb_args->proxy_addr);
@@ -1216,11 +1223,11 @@ int main (int argc, char *argv[])
 											{
 												master->decrypted_size += d;
 												master->decrypted_count++;
-												printf("[MLB] bytes decrypted: %d (%ds) -- %s (time: %ld -- %d)\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (t_stop - t_start), master->seg_count);
-												printf("MO: %s\n", master->args->launch_cmd);
+												printf("[MLB] bytes decrypted: %d (%ds) -- %s (time: %ld -- %d), BW: %d\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (t_stop - t_start), master->seg_count, master->streams[master->current_priority].bandwidth);
+//												printf("MO: %s\n", master->args->launch_cmd);
 												if (master->args->launch_cmd && strlen(master->args->launch_cmd) > 2)
 												{
-													printf("HEre\n");
+//													printf("HEre\n");
 													if (!master->cmd_thread && p.stream->seg_time * master->decrypted_count >= master->args->launch_wait)
 													{
 														sprintf(master->cmd_params, "%s -cache %d %s\0", master->args->launch_cmd, 4*(master->decrypted_size/(p.stream->seg_time * master->decrypted_count)) / 1000, master->args->output.name);
