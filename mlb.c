@@ -233,8 +233,8 @@ void mlb_master_sort_streams(MLB_HLS_MASTER_URL * master)
 	
 	printf("[MLB] Current Priority: %d (bw: %d)\n", master->current_priority, master->streams[master->current_priority].bandwidth);
 
-//	for (i=0; i < master->stream_count; i++)
-//		printf("bw: %d, prio: %d\n", master->streams[i].bandwidth, master->streams[i].priority);
+	for (i=0; i < master->stream_count; i++)
+		printf("bw: %d, prio: %d\n", master->streams[i].bandwidth, master->streams[i].priority);
 
 //	master->current_priority = 5;
 }
@@ -289,7 +289,7 @@ void *mlb_refresh_playlists_thread(void *t)
 				}
 
 				file_check_sz = st1.st_size;
-				printf("-- SZ: %" PRId64 "\n", file_check_sz);
+				printf("-- TS Filesize: %" PRId64 "\n", file_check_sz);
 			}
 
 			if (loop)
@@ -668,15 +668,18 @@ int mlb_master_switch_bw(MLB_HLS_MASTER_URL * master, int down)
 			if (master->streams[j].priority != -1 && master->streams[j].priority == prio)
 				break;
 
-		printf("Minimum bandiwdth: %d\n", master->args->bandwidth_min);
 		if (!(j >=  master->stream_count) && master->streams[j].bandwidth >= master->args->bandwidth_min)
 		{
-			printf("debug, switching from: %d, switching to: %d (%d)\n", master->streams[master->current_priority].bandwidth,  master->streams[j].bandwidth, j);
+			printf("debug, switching from: %d, switching to: %d (index in list: %d)\n", master->streams[master->current_priority].bandwidth, master->streams[j].bandwidth, j);
 			master->current_priority = j;
 			master->current_iv = mlb_getiv_from_pos(&master->streams[j], master->last_key_line);
 			master->current_iv->aes = (uint8_t *)&master->streams[j].aes_key;
 //			printf("Last_key pos: %d, \n", master->last_key_line);
 			return 1;
+		}
+		else if (master->streams[j].bandwidth < master->args->bandwidth_min)
+		{
+			printf("[MLB] Minimum bandiwdth: %d, not switching to: %d\n", master->args->bandwidth_min, master->streams[j].bandwidth);
 		}
 	}
 	return 0;
@@ -1130,7 +1133,7 @@ int main (int argc, char *argv[])
 										{
 											int j;
 											if (mlb_master_switch_bw(master, 1))
-												printf("[MLB] --------- Stepping down bandwidth: 1\n");
+												printf("[MLB] --------- Stepping UP bandwidth\n");
 
 											master->streams[i].priority = -1;
 
@@ -1183,7 +1186,7 @@ int main (int argc, char *argv[])
 
 														master->seg_fspike = 0;
 														if (mlb_master_switch_bw(master, 1))
-															printf("[MLB] --------- Stepping down bandwidth: 2\n");
+															printf("[MLB] --------- Stepping down bandwidth\n");
 /*
 														master->seg_fgood = 0;
 														master->seg_fspike++;
@@ -1202,7 +1205,7 @@ int main (int argc, char *argv[])
 														master->seg_fgood = 0;
 														if ((last_segtime1 + last_segtime2)/2 < p.stream->seg_time)
 															if (mlb_master_switch_bw(master, 0))
-																printf("[MLB] --------- Stepping up bandwidth: 2\n");
+																printf("[MLB] --------- Stepping up bandwidth\n");
 /*
 														master->seg_fspike = 0;
 														master->seg_fgood++;
