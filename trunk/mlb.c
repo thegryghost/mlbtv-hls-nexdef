@@ -168,6 +168,9 @@ void mlb_refresh_playlists(MLB_HLS_MASTER_URL * master)
 				if (strlen(master->args->proxy_addr) > 5)
 					curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_PROXY, master->args->proxy_addr);
 				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_URL, tmp_url);
+				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_TIMEOUT, 5);
+				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_CONNECTTIMEOUT, 3);
+				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_FRESH_CONNECT, 1);
 				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_WRITEFUNCTION, mlb_playlist_curl_handler);
 				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_WRITEDATA, (void*)&master->streams[i]);
 				res = curl_easy_perform(master->streams[i].playlist_curl);
