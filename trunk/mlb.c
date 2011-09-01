@@ -44,8 +44,12 @@
 //#define MPLAYER_STREAM_CMD					"/usr/bin/mplayer2 -really-quiet -fs -vc ffh264vdpau, -vo vdpau:fps=60:deint=0:denoise=1:hqscaling=1,xv, -livepause 4 -delay 0 -demuxer lavf -mc 2"
 #define MPLAYER_STREAM_CMD					" "
 
-int tmp_sw = 1;
 
+#define DATA_XFER_TIMEOUT					18
+#define URL_CONNECT_TIMEOUT					9
+
+int tmp_sw = 1;
+int show_debug = 0;
 
 // *********************************
 void mlb_print_master(MLB_HLS_MASTER_URL * master)
@@ -149,14 +153,20 @@ void mlb_refresh_playlists(MLB_HLS_MASTER_URL * master)
 				continue;
 			}
 
+			if (master->streams[master->current_priority].bandwidth != master->streams[i].bandwidth)
+			{
+//				printf("Skip fetching bw: %d (currently at: %d)\n", master->streams[i].bandwidth, master->streams[master->current_priority].bandwidth);
+				continue;
+			}
+
 			if (!master->streams[i].playlist_curl)
 				master->streams[i].playlist_curl = curl_easy_init();
 
 			if (master->streams[i].playlist_curl)
 			{
+				char error_buf[CURL_ERROR_SIZE] = {0};
 				char *tmp_url = calloc(1, MAX_STR_LEN);
 				sprintf(tmp_url, "%s%s\0", master->base_url, master->streams[i].base_url);
-//				printf("[MLB] Refreshing Stream #%d - %s - %d (%d)\n", i, tmp_url, master->streams[i].bandwidth, master->streams[i].playlist_size);
 
 				if (master->streams[i].playlist)
 				{
@@ -165,18 +175,57 @@ void mlb_refresh_playlists(MLB_HLS_MASTER_URL * master)
 					master->streams[i].playlist = NULL;
 				}
 
-				if (strlen(master->args->proxy_addr) > 5)
-					curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_PROXY, master->args->proxy_addr);
-				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_URL, tmp_url);
-				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_TIMEOUT, 5);
-				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_CONNECTTIMEOUT, 3);
-				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_FRESH_CONNECT, 1);
-				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_WRITEFUNCTION, mlb_playlist_curl_handler);
-				curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_WRITEDATA, (void*)&master->streams[i]);
-				res = curl_easy_perform(master->streams[i].playlist_curl);
+
+				if (show_debug)
+				{
+					printf("\n\n[MLB] Refreshing stream start...\n");
+				}
+
+				do
+				{
+					if (show_debug)
+					{
+						printf("[MLB] Refreshing Stream #%d - %s - %d (%d)\n", i, tmp_url, master->streams[i].bandwidth, master->streams[i].playlist_size);
+					}
+
+//					if (strlen(master->args->proxy_addr) > 5)
+//						curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_PROXY, master->args->proxy_addr);
+
+					curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_URL, tmp_url);
+					curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_TIMEOUT, 10);
+					curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_ERRORBUFFER, error_buf);
+					curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_CONNECTTIMEOUT, 1);
+					curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_WRITEFUNCTION, mlb_playlist_curl_handler);
+					curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_WRITEDATA, (void*)&master->streams[i]);
+					res = curl_easy_perform(master->streams[i].playlist_curl);
+
+					if (res != 0)
+					{
+//						if (show_debug)
+						{
+							printf("[MLB] (%d) Stream Refresh ERR: %s\n", res, error_buf);
+						}
+
+						curl_easy_cleanup(master->streams[i].playlist_curl);
+						SLEEP_250MS
+
+						master->streams[i].playlist_curl = curl_easy_init();
+
+						curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_FORBID_REUSE, 1);
+						curl_easy_setopt(master->streams[i].playlist_curl, CURLOPT_FRESH_CONNECT, 1);
+
+						SLEEP_250MS
+					}
+
+				} while (res != 0);
 
 				curl_easy_cleanup(master->streams[i].playlist_curl);
 				master->streams[i].playlist_curl = NULL;
+
+				if (show_debug)
+				{
+					printf("[MLB] Refreshing stream end...\n\n");
+				}
 
 				if (tmp_url)
 					free(tmp_url);
@@ -233,12 +282,14 @@ void mlb_master_sort_streams(MLB_HLS_MASTER_URL * master)
 			}
 		}
 	}
-	
-	printf("[MLB] Current Priority: %d (bw: %d)\n", master->current_priority, master->streams[master->current_priority].bandwidth);
 
-	for (i=0; i < master->stream_count; i++)
-		printf("bw: %d, prio: %d\n", master->streams[i].bandwidth, master->streams[i].priority);
 
+	if (show_debug)
+	{
+		printf("[MLB] Current Priority: %d (bw: %d)\n", master->current_priority, master->streams[master->current_priority].bandwidth);
+		for (i=0; i < master->stream_count; i++)
+			printf("bw: %d, prio: %d\n", master->streams[i].bandwidth, master->streams[i].priority);
+	}
 //	master->current_priority = 5;
 }
 
@@ -279,7 +330,7 @@ void *mlb_refresh_playlists_thread(void *t)
 				{
 					time_t t_tmp = time(NULL);
 
-					if (t_tmp - file_check_time > (master->args->refresh_time*2))
+					if (t_tmp - file_check_time > (master->args->refresh_time*4))
 					{
 						if (st1.st_size == file_check_sz)
 						{
@@ -292,7 +343,10 @@ void *mlb_refresh_playlists_thread(void *t)
 				}
 
 				file_check_sz = st1.st_size;
-				printf("-- TS Filesize: %" PRId64 "\n", file_check_sz);
+				if (show_debug)
+				{
+					printf("-- TS Filesize: %" PRId64 "\n", file_check_sz);
+				}
 			}
 
 			if (loop)
@@ -407,17 +461,26 @@ void mlb_get_hls_key(MLB_HLS_STREAM_URL *stream)
 
 		if (stream->key_curl)
 		{
-			if (strlen(stream->parent->args->proxy_addr) > 5)
-				curl_easy_setopt(stream->key_curl, CURLOPT_PROXY, stream->parent->args->proxy_addr);
-			curl_easy_setopt(stream->key_curl, CURLOPT_URL, stream->hls_key_url);
-			curl_easy_setopt(stream->key_curl, CURLOPT_WRITEFUNCTION, mlb_key_curl_handler);
-			curl_easy_setopt(stream->key_curl, CURLOPT_WRITEDATA, (void*)stream);
-			res = curl_easy_perform(stream->key_curl);
-/*
-			if (!res)
+			char error_buf[CURL_ERROR_SIZE] = {0};
+
+			do
 			{
-			}
-*/
+				if (strlen(stream->parent->args->proxy_addr) > 5)
+					curl_easy_setopt(stream->key_curl, CURLOPT_PROXY, stream->parent->args->proxy_addr);
+
+				curl_easy_setopt(stream->key_curl, CURLOPT_URL, stream->hls_key_url);
+				curl_easy_setopt(stream->key_curl, CURLOPT_ERRORBUFFER, error_buf);
+
+				curl_easy_setopt(stream->key_curl, CURLOPT_WRITEFUNCTION, mlb_key_curl_handler);
+				curl_easy_setopt(stream->key_curl, CURLOPT_WRITEDATA, (void*)stream);
+				res = curl_easy_perform(stream->key_curl);
+				if (res != 0)
+				{
+					printf("[MLB] Get HLS Key ERR: %s\n", error_buf);
+					SLEEP_250MS
+				}
+			} while (res != 0);
+
 			curl_easy_cleanup(stream->key_curl);
 			stream->key_curl = NULL;
 		}
@@ -788,7 +851,7 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 	if (p && p->parent && p->stream)
 	{
 		CURLcode res;
-						char content_url[MAX_STR_LEN];
+		char content_url[MAX_STR_LEN];
 		CURL * _curl = curl_easy_init();
 		MLB_HLS_MASTER_URL *master = p->parent;
 		MLB_HLS_STREAM_URL *stream = p->stream;
@@ -798,18 +861,57 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 
 		if (_curl)
 		{
-//			printf("[MLB] DEBUG - Fetch start...\n");
-			if (strlen(master->args->proxy_addr) > 5)
-				curl_easy_setopt(_curl, CURLOPT_PROXY, master->args->proxy_addr);
-			curl_easy_setopt(_curl, CURLOPT_URL, content_url);
-			curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, mlb_url_decryptor);
-			curl_easy_setopt(_curl, CURLOPT_WRITEDATA, (void*)p);
+			char error_buf[CURL_ERROR_SIZE] = {0};
+			int segtime = stream->seg_time + 2;
+			if (!segtime)
+				segtime = DATA_XFER_TIMEOUT;
 
-			if (!master->do_loop)
-				return -2;
+			if (show_debug)
+			{
+				printf("[MLB] DEBUG - Fetch start: %d\n", stream->seg_time);
+			}
 
-			res = curl_easy_perform(_curl);
-//			printf("[MLB] DEBUG - Fetch done...\n");
+
+			do
+			{
+				if (strlen(master->args->proxy_addr) > 5)
+					curl_easy_setopt(_curl, CURLOPT_PROXY, master->args->proxy_addr);
+
+				curl_easy_setopt(_curl, CURLOPT_URL, content_url);
+				curl_easy_setopt(_curl, CURLOPT_TIMEOUT, segtime*1.8);
+				curl_easy_setopt(_curl, CURLOPT_CONNECTTIMEOUT, 1);
+				curl_easy_setopt(_curl, CURLOPT_ERRORBUFFER, error_buf);
+				curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, mlb_url_decryptor);
+				curl_easy_setopt(_curl, CURLOPT_WRITEDATA, (void*)p);
+				curl_easy_setopt(_curl, CURLOPT_FORBID_REUSE, 1);
+				curl_easy_setopt(_curl, CURLOPT_FRESH_CONNECT, 1);
+
+				if (!master->do_loop)
+					return -2;
+
+				res = curl_easy_perform(_curl);
+
+				if (res != 0)
+				{
+					curl_easy_cleanup(_curl);
+					SLEEP_250MS
+
+					 _curl = curl_easy_init();
+					//if (show_debug)
+					{
+						printf("[MLB] (%d) Chunk Get Error: %s, URL: %s\n", res, error_buf, content_url); 
+					}
+					SLEEP_250MS
+				}
+			}
+			while (res != 0);
+
+			curl_easy_cleanup(_curl);
+
+			if (show_debug)
+			{
+				printf("[MLB] DEBUG - Fetch done...\n");
+			}
 
 			if (!res)
 			{
@@ -843,7 +945,6 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 				EVP_CIPHER_CTX_cleanup(ctx);
 			}
 
-			curl_easy_cleanup(_curl);
 			master->seg_count++;
 		}
 	}
@@ -861,7 +962,7 @@ void display_usage(char *exe)
     printf("\n\t-V, --verbose\t\t\tVerbose output (big V, use multiple times to increase verbosity)\n");
 }
 
-static const char *optString = "B:o:s:c:p:l:f:b:m:r:?VhL";
+static const char *optString = "B:o:s:c:p:l:f:b:m:r:?VhLd";
 
 static const struct option longOpts[] =
 {
@@ -876,6 +977,7 @@ static const struct option longOpts[] =
 	{ "lw", optional_argument, NULL, 'l' },
 	{ "first", optional_argument, NULL, 'f' },
 	{ "lock", optional_argument, NULL, 'L' },
+	{ "debug", optional_argument, NULL, 'd' },
 	{ "verbose", no_argument, NULL, 'V' },
 	{ "help", no_argument, NULL, 'h' },
 	{ NULL, no_argument, NULL, 0 }
@@ -903,6 +1005,11 @@ uint8_t get_opts(int argc, char *const argv[], MLB_OPT_ARGS *opts)
 			case 'L':
 //				if (optarg)
 					opts->lock_bandwidth = !opts->lock_bandwidth;
+				break;
+
+			case 'd':
+//				if (optarg)
+					show_debug = 1;
 				break;
 
 			case 'c':
@@ -1032,6 +1139,7 @@ int main (int argc, char *argv[])
 			printf("[MLB] Max. Bandwidth: %d(bps)\n", mlb_args->bandwidth_max);
 			printf("[MLB] Min. Bandwidth: %d(bps)\n", mlb_args->bandwidth_min);
 			printf("[MLB] Bandwidth Locking: %d\n", mlb_args->lock_bandwidth);
+
 			if (strlen(mlb_args->proxy_addr) > 5)
 				printf("[MLB] Using proxy: %s\n", mlb_args->proxy_addr);
 
@@ -1040,21 +1148,36 @@ int main (int argc, char *argv[])
 
 			if (master->curl)
 			{
+				char error_buf[CURL_ERROR_SIZE] = {0};
+
 				printf("[MLB] Fetching Master URL...\n");
 
-				if (strlen(mlb_args->proxy_addr) > 5)
-					curl_easy_setopt(master->curl, CURLOPT_PROXY, mlb_args->proxy_addr);
-				curl_easy_setopt(master->curl, CURLOPT_URL, master->master_url);
-				curl_easy_setopt(master->curl, CURLOPT_WRITEFUNCTION, mlb_master_curl_handler);
-				curl_easy_setopt(master->curl, CURLOPT_WRITEDATA, (void*)master);
+				do
+				{
+					if (strlen(mlb_args->proxy_addr) > 5)
+						curl_easy_setopt(master->curl, CURLOPT_PROXY, mlb_args->proxy_addr);
 
-				master->res = curl_easy_perform(master->curl);
+					curl_easy_setopt(master->curl, CURLOPT_URL, master->master_url);
+					curl_easy_setopt(master->curl, CURLOPT_TIMEOUT, DATA_XFER_TIMEOUT);
+					curl_easy_setopt(master->curl, CURLOPT_CONNECTTIMEOUT, 1);
+					curl_easy_setopt(master->curl, CURLOPT_FRESH_CONNECT, 1);
+					curl_easy_setopt(master->curl, CURLOPT_ERRORBUFFER, error_buf);
+
+					curl_easy_setopt(master->curl, CURLOPT_WRITEFUNCTION, mlb_master_curl_handler);
+					curl_easy_setopt(master->curl, CURLOPT_WRITEDATA, (void*)master);
+
+					master->res = curl_easy_perform(master->curl);
+					if (master->res)
+					{
+						printf("[MLB] Get Master URL ERR: %s\n", error_buf);
+						SLEEP_250MS
+					}
+				} while (master->res != 0);
+
 				mlb_master_sort_streams(master);
 //				mlb_print_master(master);
 				curl_easy_cleanup(master->curl);
-
-
-
+				master->curl = NULL;
 				pthread_create(&master->url_thread, NULL, mlb_refresh_playlists_thread, (void*)master);
 
 				while (master->do_loop)
