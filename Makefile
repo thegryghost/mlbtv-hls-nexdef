@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-O2
-LIBS=-lm -lcurl -lcrypto -lconfig
+LIBS=-lm -lcrypto -lpthread -lconfig -lhttp_fetcher
 
 mlb = mlb
 
