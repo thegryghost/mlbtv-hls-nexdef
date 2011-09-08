@@ -166,6 +166,15 @@ struct mlb_url_pass
 };
 typedef struct mlb_url_pass MLB_URL_PASS;
 
+struct mlb_curl_mem
+{
+	size_t size;
+	char *data;
+};
+typedef struct mlb_curl_mem MLB_CURL_MEM;
+
 void mlb_master_add_stream(MLB_HLS_MASTER_URL *, char *, int);
+int mlb_get_url(char *, char **);
+size_t mlb_get_url_curl(char *, char **, char *proxy);
 
 #endif
