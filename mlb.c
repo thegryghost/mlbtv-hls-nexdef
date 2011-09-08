@@ -146,6 +146,8 @@ size_t mlb_generic_curl_handler(void *buffer, size_t size, size_t nmemb, void *u
 }
 
 
+uint8_t curl_set_options = 1;
+
 size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 {
 	MLB_CURL_MEM carg = {0};
@@ -153,12 +155,12 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 
 	if (!curl_inited)
 	{
-//		printf("Global Init CURL\n");
 		curl_global_init(CURL_GLOBAL_ALL);
 		curl_inited = 1;
 	}
 
-	curl_handle = curl_easy_init();
+	if (!curl_handle)
+		curl_handle = curl_easy_init();
 
 	if (curl_handle)
 	{
@@ -166,15 +168,23 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 		char error_buf[CURL_ERROR_SIZE] = {0};
 		do
 		{
-			if (proxy && strlen(proxy) > 5)
-				curl_easy_setopt(curl_handle, CURLOPT_PROXY, proxy);
+			if (curl_set_options)
+			{
+				if (proxy && strlen(proxy) > 5)
+				{
+					curl_easy_setopt(curl_handle, CURLOPT_PROXY, proxy);
+				}
+				curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 2);
+				curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 30);
+				curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, mlb_generic_curl_handler);
 
-			curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-			curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, error_buf);
-			curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 2);
-			curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 30);
-			curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, mlb_generic_curl_handler);
+				curl_set_options = 0;
+			}
+
 			curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&carg);
+			curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, error_buf);
+			curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+
 			res = curl_easy_perform(curl_handle);
 
 			if (res != 0)
