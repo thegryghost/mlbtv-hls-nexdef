@@ -15,7 +15,7 @@
 #include <libconfig.h>
 
 #include <curl/curl.h>
-//#include <http_fetcher.h>
+#include <http_fetcher.h>
 
 #include "mlb.h"
 
@@ -147,6 +147,8 @@ size_t mlb_generic_curl_handler(void *buffer, size_t size, size_t nmemb, void *u
 
 
 uint8_t curl_set_options = 1;
+//#define mlb_get_url(x,y,z) mlb_get_url_curl(x,y,z)
+#define mlb_get_url(x,y,z) mlb_get_url_httpf(x,y,z)
 
 size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 {
@@ -202,8 +204,7 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 	return carg.size;
 }
 
-/*
-int  mlb_get_url(char *url, char **v)
+int  mlb_get_url_httpf(char *url, char **v, char * proxy)
 {
 	int fetched_len = 0;
 	char *fetched_data = NULL;
@@ -224,7 +225,6 @@ int  mlb_get_url(char *url, char **v)
 
 	return fetched_len;
 }
-*/
 
 void *mlb_cmd_thread(void *t)
 {
@@ -293,7 +293,7 @@ void mlb_refresh_playlists(MLB_HLS_MASTER_URL * master)
 				master->streams[i].playlist = NULL;
 			}
 
-			fetched_len = mlb_get_url_curl(tmp_url, &fetched_data, master->args->proxy_addr);
+			fetched_len = mlb_get_url(tmp_url, &fetched_data, master->args->proxy_addr);
 
 			if (fetched_len > 0)
 			{
@@ -545,7 +545,7 @@ void mlb_get_hls_key(MLB_HLS_STREAM_URL *stream)
 		int fetched_len = 0;
 		char *fetched_data = NULL;
 
-		fetched_len = mlb_get_url_curl(stream->hls_key_url, &fetched_data, NULL);
+		fetched_len = mlb_get_url(stream->hls_key_url, &fetched_data, NULL);
 
 
 		if (fetched_len > 0)
@@ -940,7 +940,7 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 			printf("[MLB] DEBUG - Fetch start: %d\n", stream->seg_time);
 		}
 
-		fetched_len = mlb_get_url_curl(content_url,&fetched_data, master->args->proxy_addr);
+		fetched_len = mlb_get_url(content_url,&fetched_data, master->args->proxy_addr);
 
 		if (fetched_len > 0)
 		{
@@ -1191,7 +1191,7 @@ int main (int argc, char *argv[])
 
 			printf("[MLB] Fetching Master URL...\n");
 
-			fetched_len = mlb_get_url_curl(master->master_url, &fetched_data, master->args->proxy_addr);
+			fetched_len = mlb_get_url(master->master_url, &fetched_data, master->args->proxy_addr);
 			if (fetched_len > 0)
 			{
 				mlb_master_url_handler((void*)fetched_data, 1, (size_t)fetched_len, (void*)master);

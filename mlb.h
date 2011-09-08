@@ -174,7 +174,7 @@ struct mlb_curl_mem
 typedef struct mlb_curl_mem MLB_CURL_MEM;
 
 void mlb_master_add_stream(MLB_HLS_MASTER_URL *, char *, int);
-int mlb_get_url(char *, char **);
+int mlb_get_url(char *, char **, char *proxy);
 size_t mlb_get_url_curl(char *, char **, char *proxy);
 
 #endif
