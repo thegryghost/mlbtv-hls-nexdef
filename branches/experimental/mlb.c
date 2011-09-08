@@ -262,10 +262,10 @@ void mlb_refresh_playlists(MLB_HLS_MASTER_URL * master)
 		char *tmp_url = NULL;
 
 
-			if (show_debug)
-			{
-				printf("[MLB] DEBUG - Refreshing playlist URLS\n");
-			}
+		if (show_debug)
+		{
+			printf("[MLB] DEBUG - Refreshing playlist URLS\n");
+		}
 
 
 		for(i=0; i < master->stream_count; i++)
@@ -316,7 +316,6 @@ void mlb_refresh_playlists(MLB_HLS_MASTER_URL * master)
 				free(fetched_data);
 				fetched_data = NULL;
 			}
-
 		}
 	}
 }
@@ -338,6 +337,7 @@ void mlb_master_sort_streams(MLB_HLS_MASTER_URL * master)
 		}
 
 	j = master->stream_count - 1;
+
 	for (i=0; i < master->stream_count; i++)
 		for (tmp=0; tmp < master->stream_count; tmp++)
 			if (master->streams[tmp].bandwidth == stuff[i])
@@ -924,72 +924,71 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 		char content_url[MAX_STR_LEN];
 		int fetched_len = 0;
 		char *fetched_data = NULL;
+		int segtime = 0;
 
 		MLB_HLS_MASTER_URL *master = p->parent;
 		MLB_HLS_STREAM_URL *stream = p->stream;
 
+		segtime = stream->seg_time + 2;
 		sprintf(content_url, "%s%s%s\0", master->base_url, stream->base_url_media, url);
 
 //		printf("GET URL: %s\n",content_url);
 
+
+		if (show_debug)
 		{
-			int segtime = stream->seg_time + 2;
+			printf("[MLB] DEBUG - Fetch start: %d\n", stream->seg_time);
+		}
 
-			if (show_debug)
-			{
-				printf("[MLB] DEBUG - Fetch start: %d\n", stream->seg_time);
-			}
+		fetched_len = mlb_get_url_curl(content_url,&fetched_data, master->args->proxy_addr);
 
-			fetched_len = mlb_get_url_curl(content_url,&fetched_data, master->args->proxy_addr);
-			if (fetched_len > 0)
-			{
-				mlb_url_decryptor((void*)fetched_data, 1, (size_t)fetched_len, (void*)p);
-			}
+		if (fetched_len > 0)
+		{
+			int out_len = 0, lastDecryptLength = 0;
+			EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+
+			mlb_url_decryptor((void*)fetched_data, 1, (size_t)fetched_len, (void*)p);
 
 			if (show_debug)
 			{
 				printf("[MLB] DEBUG - Fetch done: %d...\n", fetched_len);
 			}
 
-			if (fetched_len > 0)
-			{
-				int out_len = 0, lastDecryptLength = 0;
-				EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-				EVP_CIPHER_CTX_init(ctx);
+			EVP_CIPHER_CTX_init(ctx);
 
-				if (EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, master->current_iv->aes, master->current_iv->iv) == 1)
+			if (EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, master->current_iv->aes, master->current_iv->iv) == 1)
+			{
+				if (EVP_DecryptUpdate(ctx, master->media_out, &out_len, p->write_buf, p->write_pos) == 1)
 				{
-					if (EVP_DecryptUpdate(ctx, master->media_out, &out_len, p->write_buf, p->write_pos) == 1)
+					if (EVP_DecryptFinal_ex(ctx, master->media_out + out_len, &lastDecryptLength) == 1)
 					{
-						if (EVP_DecryptFinal_ex(ctx, master->media_out + out_len, &lastDecryptLength) == 1)
-						{
-//							printf("[MLB] DBEUG -- Decrypt good: %s (%d)\n", url, out_len + lastDecryptLength);
-							output_handle_write_data(&master->args->output, master->media_out, out_len + lastDecryptLength, 1);
-							ret = out_len + lastDecryptLength;
-						}
-						else
-						{
-							printf("[MLB] ERROR!!!!!!!!! BAD DECRYPT [1]\n");
-							ret = -1;
-						}
+//						printf("[MLB] DBEUG -- Decrypt good: %s (%d)\n", url, out_len + lastDecryptLength);
+						output_handle_write_data(&master->args->output, master->media_out, out_len + lastDecryptLength, 1);
+						ret = out_len + lastDecryptLength;
+					}
+					else
+					{
+						printf("[MLB] ERROR!!!!!!!!! BAD DECRYPT [1]\n");
+						ret = -1;
 					}
 				}
-				else
-				{
-					printf("[MLB] ERROR!!!!!!!!! BAD DECRYPT [2]\n");
-					ret = -2;
-				}
-
-				EVP_CIPHER_CTX_cleanup(ctx);
 			}
-
-			master->seg_count++;
-
-			if (fetched_data)
+			else
 			{
-				free(fetched_data);
-				fetched_data = NULL;
+				printf("[MLB] ERROR!!!!!!!!! BAD DECRYPT [2]\n");
+				ret = -2;
 			}
+
+			EVP_CIPHER_CTX_cleanup(ctx);
+		}
+
+
+		master->seg_count++;
+
+		if (fetched_data)
+		{
+			free(fetched_data);
+			fetched_data = NULL;
 		}
 	}
 	return ret;
@@ -1190,228 +1189,220 @@ int main (int argc, char *argv[])
 			if (strlen(mlb_args->proxy_addr) > 5)
 				printf("[MLB] Using proxy: %s\n", mlb_args->proxy_addr);
 
-			if (1)
+			printf("[MLB] Fetching Master URL...\n");
+
+			fetched_len = mlb_get_url_curl(master->master_url, &fetched_data, master->args->proxy_addr);
+			if (fetched_len > 0)
 			{
-				printf("[MLB] Fetching Master URL...\n");
+				mlb_master_url_handler((void*)fetched_data, 1, (size_t)fetched_len, (void*)master);
+			}
 
-				fetched_len = mlb_get_url_curl(master->master_url, &fetched_data, master->args->proxy_addr);
-				if (fetched_len > 0)
+			mlb_master_sort_streams(master);
+//			mlb_print_master(master);
+			pthread_create(&master->url_thread, NULL, mlb_refresh_playlists_thread, (void*)master);
+
+			while (master->do_loop)
+			{
+				pthread_mutex_lock(&master->playlist_mutex);
+				for(i=0; i < master->stream_count; i++)
 				{
-					mlb_master_url_handler((void*)fetched_data, 1, (size_t)fetched_len, (void*)master);
-				}
-
-				mlb_master_sort_streams(master);
-//				mlb_print_master(master);
-				pthread_create(&master->url_thread, NULL, mlb_refresh_playlists_thread, (void*)master);
-
-				while (master->do_loop)
-				{
-					pthread_mutex_lock(&master->playlist_mutex);
-					for(i=0; i < master->stream_count; i++)
+					if (master->streams[i].playlist_size > master->streams[i].last_size)
 					{
-						if (master->streams[i].playlist_size > master->streams[i].last_size)
+						mlb_process_streams(&master->streams[i]);
+						if (master->streams[i].start_time && !master->stream_start_time)
 						{
-							mlb_process_streams(&master->streams[i]);
-							if (master->streams[i].start_time && !master->stream_start_time)
-							{
-								master->stream_start_time = master->streams[i].start_time;
-								printf("[MLB] Setting stream start time to (epoch): %ld\n", master->stream_start_time);
-							}
-							master->streams[i].last_size = master->streams[i].playlist_size;
-//							printf("(%d) IVCOUNT: %d\n", master->streams[i].bandwidth, master->streams[i].iv_count);
+							master->stream_start_time = master->streams[i].start_time;
+							printf("[MLB] Setting stream start time to (epoch): %ld\n", master->stream_start_time);
 						}
-
-						//master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-2].pos;
-
-						if (!master->current_seg_line && master->streams[i].iv_count)
-						{
-							int lc = master->streams[i].line_count;
-							int lb = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
-
-							if (!master->args->start_pos)
-							{
-								if (((lc - lb) / 2) -1 >= 2)
-									master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
-								else
-									master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-2].pos;
-							}
-							else
-							{
-								if (master->args->start_pos < master->streams[i].iv_count)
-									master->current_seg_line = master->streams[i].iv_keys[master->args->start_pos - 1].pos;
-							}
-							printf("[MLB] Start fetching video from line: %d (%d)\n", master->current_seg_line, master->streams[i].line_count);
-						}
-
+						master->streams[i].last_size = master->streams[i].playlist_size;
+//						printf("(%d) IVCOUNT: %d\n", master->streams[i].bandwidth, master->streams[i].iv_count);
 					}
 
-					if (master->current_seg_line)
-					{
-						int j;
-						char tmp[MAX_STR_LEN];
-						MLB_URL_PASS p;
+					//master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-2].pos;
 
-						for(i=0; i < master->stream_count; i++)
+					if (!master->current_seg_line && master->streams[i].iv_count)
+					{
+						int lc = master->streams[i].line_count;
+						int lb = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
+
+						if (!master->args->start_pos)
 						{
-							if (!master->do_loop)
+							if (((lc - lb) / 2) -1 >= 2)
+								master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
+							else
+								master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-2].pos;
+						}
+						else
+						{
+							if (master->args->start_pos < master->streams[i].iv_count)
+								master->current_seg_line = master->streams[i].iv_keys[master->args->start_pos - 1].pos;
+						}
+						printf("[MLB] Start fetching video from line: %d (%d)\n", master->current_seg_line, master->streams[i].line_count);
+					}
+				}
+
+				if (master->current_seg_line)
+				{
+					int j;
+					char tmp[MAX_STR_LEN];
+					MLB_URL_PASS p;
+
+					for(i=0; i < master->stream_count; i++)
+					{
+						if (!master->do_loop)
+							break;
+						if (i != master->current_priority)
+							continue;
+
+						if (master->current_seg_line > master->streams[i].line_count)
+							master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
+
+						do
+						{
+							if (master->current_seg_line >= master->streams[i].line_count && master->streams[i].state == MLB_HLS_STATE_LIVE)
 								break;
 
-							if (i != master->current_priority)
-								continue;
+//							printf("Getting: %d (%d)\n", master->current_seg_line, master->streams[i].bandwidth);
 
-							if (master->current_seg_line > master->streams[i].line_count)
-								master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
-
-							do
+							if (mlb_stream_getline(&master->streams[i], master->current_seg_line, (char*)&tmp, MAX_STR_LEN) > 0)
 							{
-								if (master->current_seg_line >= master->streams[i].line_count && master->streams[i].state == MLB_HLS_STATE_LIVE)
-									break;
-
-//								printf("Getting: %d (%d)\n", master->current_seg_line, master->streams[i].bandwidth);
-
-								if (mlb_stream_getline(&master->streams[i], master->current_seg_line, (char*)&tmp, MAX_STR_LEN) > 0)
+								if (tmp[0] == '#' && tmp[1] == 'E' && tmp[2] == 'X' && tmp[3] == 'T')
 								{
-									if (tmp[0] == '#' && tmp[1] == 'E' && tmp[2] == 'X' && tmp[3] == 'T')
+									if (strstr(tmp, HLS_KEY_MARKER) != NULL)
 									{
-										if (strstr(tmp, HLS_KEY_MARKER) != NULL)
-										{
-											master->current_iv = mlb_getiv_from_pos(&master->streams[i], master->current_seg_line);
-											master->current_iv->aes = (uint8_t *)&master->streams[i].aes_key;
-											master->last_key_line = master->current_seg_line;
-										}
-										else if (strstr(tmp, HLS_END_MARKER) != NULL)
-										{
-											int j;
-											if (mlb_master_switch_bw(master, 1))
-												printf("[MLB] --------- Stepping UP bandwidth\n");
+										master->current_iv = mlb_getiv_from_pos(&master->streams[i], master->current_seg_line);
+										master->current_iv->aes = (uint8_t *)&master->streams[i].aes_key;
+										master->last_key_line = master->current_seg_line;
+									}
+									else if (strstr(tmp, HLS_END_MARKER) != NULL)
+									{
+										int j;
+										if (mlb_master_switch_bw(master, 1))
+											printf("[MLB] --------- Stepping UP bandwidth\n");
 
-											master->streams[i].priority = -1;
+										master->streams[i].priority = -1;
 
-											for (j=i+1; j < master->stream_count; j++)
-												if (master->streams[j].priority > -1)
-												{
-													master->current_priority = j;
-													break;
-												}
-
-											if (j >= master->stream_count)
+										for (j=i+1; j < master->stream_count; j++)
+											if (master->streams[j].priority > -1)
 											{
-												master->do_loop = 0;
-												printf("[MLB] Out of streams.. exiting\n");
+												master->current_priority = j;
+												break;
 											}
+
+										if (j >= master->stream_count)
+										{
+											master->do_loop = 0;
+											printf("[MLB] Out of streams.. exiting\n");
 										}
 									}
-									else
+								}
+								else
+								{
+									int d = 0;
+
+									memset(&p, 0, sizeof(MLB_URL_PASS));
+									p.iv = master->current_iv;
+									p.write_buf = master->media_in;
+									p.write_size = master->media_size;
+									p.write_pos = 0;
+									p.parent = master;
+									p.stream = &master->streams[i];
+
+									if (master->do_loop)
 									{
-										int d = 0;
+										time_t t_start, t_stop;
 
-										memset(&p, 0, sizeof(MLB_URL_PASS));
-										p.iv = master->current_iv;
-										p.write_buf = master->media_in;
-										p.write_size = master->media_size;
-										p.write_pos = 0;
-										p.parent = master;
-										p.stream = &master->streams[i];
+										t_start = time(NULL);
+										d = mlb_hls_get_and_decrypt(&p, tmp);
+										t_stop = time(NULL);
 
-										if (master->do_loop)
+										last_segtime2 = last_segtime1;
+										last_segtime1 = (t_stop - t_start);
+										if (master->seg_count > 1)
 										{
-											time_t t_start, t_stop;
-
-											t_start = time(NULL);
-											d = mlb_hls_get_and_decrypt(&p, tmp);
-											t_stop = time(NULL);
-
-
-											last_segtime2 = last_segtime1;
-											last_segtime1 = (t_stop - t_start);
-											if (master->seg_count > 1)
+											master->seg_ftime += (t_stop - t_start);
+											//printf("SEGTIME AVG: %ld (%ld %d, Single Segtime: %d)\n", master->seg_ftime  / (long)master->seg_count, (t_stop - t_start), master->seg_count, p.stream->seg_time);
+											if (!master->args->lock_bandwidth && p.stream->seg_time)
 											{
-												master->seg_ftime += (t_stop - t_start);
-												//printf("SEGTIME AVG: %ld (%ld %d, Single Segtime: %d)\n", master->seg_ftime  / (long)master->seg_count, (t_stop - t_start), master->seg_count, p.stream->seg_time);
-												if (!master->args->lock_bandwidth && p.stream->seg_time)
+//												if (master->seg_ftime  / (long)master->seg_count > master->streams[i].seg_time)
+												if (t_stop - t_start  > p.stream->seg_time)
 												{
-//													if (master->seg_ftime  / (long)master->seg_count > master->streams[i].seg_time)
-													if (t_stop - t_start  > p.stream->seg_time)
-													{
+													master->seg_fspike = 0;
+													if (mlb_master_switch_bw(master, 1))
+														printf("[MLB] --------- Stepping down bandwidth\n");
+/*
+													master->seg_fgood = 0;
+													master->seg_fspike++;
 
+													if (master->seg_fspike > 3)
+													{
 														master->seg_fspike = 0;
 														if (mlb_master_switch_bw(master, 1))
 															printf("[MLB] --------- Stepping down bandwidth\n");
-/*
-														master->seg_fgood = 0;
-														master->seg_fspike++;
-
-														if (master->seg_fspike > 3)
-														{
-															master->seg_fspike = 0;
-															if (mlb_master_switch_bw(master, 1))
-																printf("[MLB] --------- Stepping down bandwidth\n");
-														}
-*/
 													}
-													else
-													{
-
-														master->seg_fgood = 0;
-														if ((last_segtime1 + last_segtime2)/2 < p.stream->seg_time)
-															if (mlb_master_switch_bw(master, 0))
-																printf("[MLB] --------- Stepping up bandwidth\n");
-/*
-														master->seg_fspike = 0;
-														master->seg_fgood++;
-														if (master->seg_fgood > 3)
-														{
-															master->seg_fgood = 0;
-															if (mlb_master_switch_bw(master, 0))
-																printf("[MLB] --------- Stepping up bandwidth\n");
-														}
 */
-													}
 												}
-												//else
-												//	printf("[MLB] Locking bandwidth, no switching done\n");
-											}
-
-											if (d)
-											{
-												master->decrypted_size += d;
-												master->decrypted_count++;
-												printf("[MLB] bytes decrypted: %d (%ds) -- %s (time: %ld -- %d), BW: %d\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (t_stop - t_start), master->seg_count, master->streams[master->current_priority].bandwidth);
-//												printf("MO: %s\n", master->args->launch_cmd);
-												if (master->args->launch_cmd && strlen(master->args->launch_cmd) > 2)
+												else
 												{
-//													printf("HEre\n");
-													if (!master->cmd_thread && p.stream->seg_time * master->decrypted_count >= master->args->launch_wait)
+													master->seg_fgood = 0;
+													if ((last_segtime1 + last_segtime2)/2 < p.stream->seg_time)
+														if (mlb_master_switch_bw(master, 0))
+															printf("[MLB] --------- Stepping up bandwidth\n");
+/*
+													master->seg_fspike = 0;
+													master->seg_fgood++;
+													if (master->seg_fgood > 3)
 													{
-														sprintf(master->cmd_params, "%s -cache %d %s\0", master->args->launch_cmd, 4*(master->decrypted_size/(p.stream->seg_time * master->decrypted_count)) / 1000, master->args->output.name);
-														printf("[MLB] Launching.. %s\n", master->cmd_params);
-														pthread_create(&master->cmd_thread, NULL, mlb_cmd_thread, (void*)master);
+														master->seg_fgood = 0;
+														if (mlb_master_switch_bw(master, 0))
+															printf("[MLB] --------- Stepping up bandwidth\n");
 													}
+*/
+												}
+											}
+											//else
+											//	printf("[MLB] Locking bandwidth, no switching done\n");
+										}
+
+										if (d)
+										{
+											master->decrypted_size += d;
+											master->decrypted_count++;
+											printf("[MLB] bytes decrypted: %d (%ds) -- %s (time: %ld -- %d), BW: %d\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (t_stop - t_start), master->seg_count, master->streams[master->current_priority].bandwidth);
+//											printf("MO: %s\n", master->args->launch_cmd);
+											if (master->args->launch_cmd && strlen(master->args->launch_cmd) > 2)
+											{
+//												printf("HEre\n");
+												if (!master->cmd_thread && p.stream->seg_time * master->decrypted_count >= master->args->launch_wait)
+												{
+													sprintf(master->cmd_params, "%s -cache %d %s\0", master->args->launch_cmd, 4*(master->decrypted_size/(p.stream->seg_time * master->decrypted_count)) / 1000, master->args->output.name);
+													printf("[MLB] Launching.. %s\n", master->cmd_params);
+													pthread_create(&master->cmd_thread, NULL, mlb_cmd_thread, (void*)master);
 												}
 											}
 										}
 									}
 								}
-								else
-								{
-									//printf("I BROKE\n");
-									break;
-								}
+							}
+							else
+							{
+								//printf("I BROKE\n");
+								break;
+							}
 
-								master->current_seg_line++;
-							} while (master->do_loop);
-						}
-
+							master->current_seg_line++;
+						} while (master->do_loop);
 					}
-					pthread_mutex_unlock(&master->playlist_mutex);
-					SLEEP_500MS
-				} // While loop
+				}
+				pthread_mutex_unlock(&master->playlist_mutex);
+				SLEEP_500MS
+			} // While loop
 
-				pthread_join(master->url_thread, NULL);
+			pthread_join(master->url_thread, NULL);
 
-				if (master->cmd_thread)
-					pthread_join(master->cmd_thread, NULL);
-			}
+			if (master->cmd_thread)
+				pthread_join(master->cmd_thread, NULL);
+
 			if (fetched_data)
 				free(fetched_data);
 			output_close(&master->args->output);
