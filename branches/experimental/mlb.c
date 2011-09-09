@@ -19,12 +19,14 @@
 
 #include "mlb.h"
 
-#define HLS_CFG_PROXY						"proxy_addr"
-#define HLS_CFG_PLAYER_CMD					"player_cmd"
-#define HLS_CFG_LW_CMD						"lw_time"
+//#define mlb_get_url(x,y,z) mlb_get_url_curl(x,y,z)
+#define mlb_get_url(x,y,z) mlb_get_url_httpf(x,y,z)
 
 #define HLS_PLAYLIST_REFRESH_TIME			12
 
+#define HLS_CFG_PROXY						"proxy_addr"
+#define HLS_CFG_PLAYER_CMD					"player_cmd"
+#define HLS_CFG_LW_CMD						"lw_time"
 #define HLS_START_MARKER					"#EXTM3U"
 #define HLS_KEY_MARKER						"#EXT-X-KEY:"
 #define HLS_SEGMENT_LEN_MARKER				"#EXTINF:"
@@ -32,23 +34,14 @@
 #define HLS_END_MARKER						"#EXT-X-ENDLIST"
 #define HLS_BANDWIDTH_MARKER				"BANDWIDTH="
 #define HLS_AES128_DESC						"METHOD=AES-128"
-
 #define HLS_HEADER_POS						0
 #define HLS_DATETIME_POS					3
 #define HLS_FIRSTKEY_POS					5
-
 #define MLB_HLS_DEFAULT_BUFSIZE				(562500 * 10)
-
 #define MLB_HLS_TIME_FORMAT					"%FT%T" // Ignore timezone info
-
-#define MLB_HLS_DEFAULT_CFGFILE					"mlb.cfg"
+#define MLB_HLS_DEFAULT_CFGFILE				"mlb.cfg"
 #define MPLAYER_STREAM_CMD					" "
 
-
-#define DATA_XFER_TIMEOUT					18
-#define URL_CONNECT_TIMEOUT					9
-
-int tmp_sw = 1;
 int show_debug = 0;
 
 CURL *curl_handle = NULL;
@@ -147,22 +140,19 @@ size_t mlb_generic_curl_handler(void *buffer, size_t size, size_t nmemb, void *u
 
 
 uint8_t curl_set_options = 1;
-//#define mlb_get_url(x,y,z) mlb_get_url_curl(x,y,z)
-#define mlb_get_url(x,y,z) mlb_get_url_httpf(x,y,z)
 
 size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 {
 	MLB_CURL_MEM carg = {0};
-//	char **ed;
 
 	if (!curl_inited)
 	{
 		curl_global_init(CURL_GLOBAL_ALL);
 		curl_inited = 1;
+		if (!curl_handle)
+			curl_handle = curl_easy_init();
 	}
 
-	if (!curl_handle)
-		curl_handle = curl_easy_init();
 
 	if (curl_handle)
 	{
@@ -200,6 +190,7 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 			}
 		} while (res != 0);
 	}
+
 	*v = carg.data;
 	return carg.size;
 }
@@ -209,7 +200,7 @@ int  mlb_get_url_httpf(char *url, char **v, char * proxy)
 	int fetched_len = 0;
 	char *fetched_data = NULL;
 
-	http_setTimeout(2);
+	http_setTimeout(3);
 
 	do
 	{
@@ -217,7 +208,7 @@ int  mlb_get_url_httpf(char *url, char **v, char * proxy)
 		if (fetched_len <= 0)
 		{
 			int i;
-			printf("--      BAD -- trying again: %s\n", http_strerror());
+			printf("--      BAD -- trying again: %s -- %s\n", http_strerror(), url);
 			for (i=0; i < 4; i++)
 				SLEEP_250MS
 		}
