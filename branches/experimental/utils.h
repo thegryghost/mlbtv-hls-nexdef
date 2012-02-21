@@ -32,6 +32,7 @@ int str_to_bytes(char *, unsigned char *, int);
 TEXTFILE_IN_MEMORY * memfile_init(char *, int);
 char * memfile_getnext_line(TEXTFILE_IN_MEMORY *, int);
 int memfile_getline_count(TEXTFILE_IN_MEMORY *);
+uint32_t get_time_ms(void);
 
 
 #endif

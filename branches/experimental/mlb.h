@@ -57,9 +57,16 @@ struct mlb_opt_args
 	char base64_uri[MAX_STR_LEN];
 	int verbose;
 	int launch_wait;
+
+//	uint32_t last_bps_time[10][2];
+	uint32_t last_bps_time[10];
+	uint32_t last_bps_max;
+	uint32_t last_bps_pos;
+
 	char launch_cmd[MAX_STR_LEN];
 	char cfg_file[MAX_STR_LEN];
 	char proxy_addr[MAX_STR_LEN];
+
 };
 typedef struct mlb_opt_args MLB_OPT_ARGS;
 
@@ -129,13 +136,8 @@ struct mlb_hls_master_url
 	int current_seg_line;
 
 	int last_key_line;
-//	int key_line_spacing;
-
 
 	int seg_count;
-	long seg_ftime;
-	int seg_fspike;
-	int seg_fgood;
 
 	MLB_HLS_IV_STRUCT *current_iv;
 	MLB_HLS_STREAM_URL streams[MLB_HLS_MAX_STREAMS];
