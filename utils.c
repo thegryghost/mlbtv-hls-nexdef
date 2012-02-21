@@ -141,3 +141,10 @@ int str_to_bytes(char *in, uint8_t *out, int size)
 	}
 	return j;
 }
+
+uint32_t get_time_ms(void)
+{
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return (uint32_t)((tv.tv_sec) * 1000 + (tv.tv_usec) / 1000);
+}
