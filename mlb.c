@@ -169,8 +169,8 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 				curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 2);
 				curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 30);
 				curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, mlb_generic_curl_handler);
-				curl_easy_setopt(curl_handle, CURLOPT_DNS_CACHE_TIMEOUT, 12);
-//				curl_easy_setopt(curl_handle, CURLOPT_BUFFERSIZE, 64000*5);
+				curl_easy_setopt(curl_handle, CURLOPT_DNS_CACHE_TIMEOUT, 30);
+				curl_easy_setopt(curl_handle, CURLOPT_BUFFERSIZE, 64000*4);
 //				curl_easy_setopt(curl_handle, CURLOPT_MAX_RECV_SPEED_LARGE, (off_t)3000000);
 				curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; rv:1.7.3) Gecko/20041001 Firefox/0.10.1" );
 				curl_set_options = 0;
@@ -1427,7 +1427,7 @@ int main (int argc, char *argv[])
 											master->decrypted_size += decrypted_bytes;
 											master->decrypted_count++;
 											master->decrypted_time += (t2 - t1);
-											printf("[MLB] Segment: %s (bw: %d), D/L Rate [%d]: %0.2f (Mbps)\n",  tmp, master->streams[master->current_priority].bandwidth, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
+											printf("[MLB] Segment: %s (bw: %d -- %d), D/L Rate [%d]: %0.2f (Mbps)\n",  tmp, master->streams[master->current_priority].bandwidth, (t2-t1)/1000, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
 //											printf("[MLB] total bytes decrypted: %d (current: %s) (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 //											printf("[MLB] total bytes decrypted: %d (%ds) -- %s (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 
