@@ -58,9 +58,8 @@ struct mlb_opt_args
 	int verbose;
 	int launch_wait;
 
-//	uint32_t last_bps_time[10][2];
-	uint32_t last_bps_time[10];
-	uint32_t last_bps_max;
+	uint32_t last_bps_time[255];
+	uint32_t last_bps_segcount_avg;
 	uint32_t last_bps_pos;
 
 	char launch_cmd[MAX_STR_LEN];

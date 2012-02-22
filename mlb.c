@@ -170,13 +170,12 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 				curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 30);
 				curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, mlb_generic_curl_handler);
 				curl_easy_setopt(curl_handle, CURLOPT_DNS_CACHE_TIMEOUT, 12);
-
+//				curl_easy_setopt(curl_handle, CURLOPT_BUFFERSIZE, 64000*5);
+//				curl_easy_setopt(curl_handle, CURLOPT_MAX_RECV_SPEED_LARGE, (off_t)3000000);
+				curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; rv:1.7.3) Gecko/20041001 Firefox/0.10.1" );
 				curl_set_options = 0;
 			}
 
-//			curl_easy_setopt(curl_handle, CURLOPT_MAX_RECV_SPEED_LARGE, (off_t)3000000);
-//			curl_easy_setopt(curl_handle, CURLOPT_DNS_USE_GLOBAL_CACHE, 0);
-				curl_easy_setopt(curl_handle, CURLOPT_BUFFERSIZE, 64000*5);
 			curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&carg);
 			curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, error_buf);
 			curl_easy_setopt(curl_handle, CURLOPT_URL, url);
@@ -1062,7 +1061,7 @@ void display_usage(char *exe)
 
     printf("\nOptions:\n");
 
-    printf("\t-L, --lock\t\tEnable Adapative Bandwidth (default is off)\n");
+    printf("\t-L, --lock\t\tToggle Adapative Bandwidth (default is on)\n");
     printf("\t-c, --cfg\t\tSpecify a config file\n");
     printf("\t-l, --lw\t\tWait Time before spawning player (seconds)\n");
     printf("\t-b, --maxbit\t\tLimit Maximum bitrate\n");
@@ -1078,7 +1077,7 @@ void display_usage(char *exe)
 //    printf("\t-V, --verbose\t\tVerbose output (big V, use multiple times to increase verbosity)\n");
 }
 
-static const char *optString = "B:o:s:c:p:l:f:b:m:r:?VhLd";
+static const char *optString = "a:B:o:s:c:p:l:f:b:m:r:?VhLd";
 
 static const struct option longOpts[] =
 {
@@ -1088,6 +1087,7 @@ static const struct option longOpts[] =
 	{ "minbit", optional_argument, NULL, 'm' },
 	{ "startbit", optional_argument, NULL, 's' },
 	{ "refresh", optional_argument, NULL, 'r' },
+	{ "avg", optional_argument, NULL, 'a' },
 	{ "cfg", optional_argument, NULL, 'c' },
 	{ "proxy", optional_argument, NULL, 'p' },
 	{ "lw", optional_argument, NULL, 'l' },
@@ -1110,6 +1110,14 @@ uint8_t get_opts(int argc, char *const argv[], MLB_OPT_ARGS *opts)
 
 		switch (opt)
 		{
+			case 'a':
+				opts->last_bps_segcount_avg = atoi(optarg);
+				if (opts->last_bps_segcount_avg > 254 || opts->last_bps_segcount_avg < 0)
+				{
+					opts->last_bps_segcount_avg = HLS_DEFAULD_SEGCOUNT_FOR_AVG;
+				}
+				break;
+
 			case 'B':
 				strncpy(opts->base64_uri, optarg, MAX_STR_LEN);
 				break;
@@ -1225,11 +1233,10 @@ int main (int argc, char *argv[])
 
 	mlb_args = calloc(1, sizeof(MLB_OPT_ARGS));
 
-	mlb_args->lock_bandwidth = 1;
+	mlb_args->lock_bandwidth = 0;
 	mlb_args->refresh_time = HLS_PLAYLIST_REFRESH_TIME;
-//	mlb_args->bandwidth_max = MLB_HLS_DEFAULT_BITRATE;
 	mlb_args->start_pos = 0;
-	mlb_args->last_bps_max = HLS_DEFAULD_SEGCOUNT_FOR_AVG;
+	mlb_args->last_bps_segcount_avg = HLS_DEFAULD_SEGCOUNT_FOR_AVG;
 	mlb_args->launch_wait = 30;
 	strcpy(mlb_args->launch_cmd, MPLAYER_STREAM_CMD);
 	strcpy(mlb_args->cfg_file, MLB_HLS_DEFAULT_CFGFILE);
@@ -1255,8 +1262,9 @@ int main (int argc, char *argv[])
 			char *fetched_data = NULL;
 
 			printf("[MLB] Output file: %s\n", mlb_args->output.name);
-			printf("[MLB] Max. Bandwidth: %d(bps)\n", mlb_args->bandwidth_max);
-			printf("[MLB] Min. Bandwidth: %d(bps)\n", mlb_args->bandwidth_min);
+			printf("[MLB] Segment Avg. Count: %d\n", mlb_args->last_bps_segcount_avg);
+			printf("[MLB] Max Bandwidth: %d (bps)\n", mlb_args->bandwidth_max);
+			printf("[MLB] Min Bandwidth: %d (bps)\n", mlb_args->bandwidth_min);
 			printf("[MLB] Bandwidth Locking: %d\n", mlb_args->lock_bandwidth);
 
 			if (strlen(mlb_args->proxy_addr) > 5)
@@ -1265,6 +1273,7 @@ int main (int argc, char *argv[])
 			printf("[MLB] Fetching Master URL: %s\n", master->master_url);
 
 			fetched_len = mlb_get_url(master->master_url, &fetched_data, master->args->proxy_addr);
+
 			if (fetched_len > 0)
 			{
 				mlb_master_url_handler((void*)fetched_data, 1, (size_t)fetched_len, (void*)master);
@@ -1395,10 +1404,10 @@ int main (int argc, char *argv[])
 
 										mlb_args->last_bps_time[mlb_args->last_bps_pos++] = (uint32_t) floor(s);
 
-										if (mlb_args->last_bps_pos >= mlb_args->last_bps_max)
+										if (mlb_args->last_bps_pos >= mlb_args->last_bps_segcount_avg)
 											mlb_args->last_bps_pos = 0;
 
-										for(i = 0; i < mlb_args->last_bps_max; i++)
+										for(i = 0; i < mlb_args->last_bps_segcount_avg; i++)
 										{
 											if (mlb_args->last_bps_time[i])
 											{
@@ -1407,7 +1416,7 @@ int main (int argc, char *argv[])
 											}
 										}
 
-										if (q && q > mlb_args->last_bps_max-1)
+										if (q && q > mlb_args->last_bps_segcount_avg-1)
 										{
 //											printf("Average Aggregate (%d): %d -- %0.2f\n", q, (tmp_total/q), (tmp_total/q)/1000000.0);
 											mlb_master_switch_bw(master, 0, (int)floor(s));
@@ -1418,7 +1427,7 @@ int main (int argc, char *argv[])
 											master->decrypted_size += decrypted_bytes;
 											master->decrypted_count++;
 											master->decrypted_time += (t2 - t1);
-											printf("[MLB] Segment: %s (bw: %d), D/L Rate [%d]: %0.2f (Mbps)\n",  tmp, master->streams[master->current_priority].bandwidth, mlb_args->last_bps_max, (double)floor(s)/1000000.0);
+											printf("[MLB] Segment: %s (bw: %d), D/L Rate [%d]: %0.2f (Mbps)\n",  tmp, master->streams[master->current_priority].bandwidth, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
 //											printf("[MLB] total bytes decrypted: %d (current: %s) (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 //											printf("[MLB] total bytes decrypted: %d (%ds) -- %s (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 
