@@ -133,6 +133,8 @@ struct mlb_hls_master_url
 
 	int decrypted_size;
 	int decrypted_count;
+	double decrypted_time;
+
 	int current_seg_line;
 
 	int last_key_line;
