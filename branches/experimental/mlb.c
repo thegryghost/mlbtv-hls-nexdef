@@ -169,13 +169,14 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 				curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 2);
 				curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 30);
 				curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, mlb_generic_curl_handler);
+				curl_easy_setopt(curl_handle, CURLOPT_DNS_CACHE_TIMEOUT, 12);
 
 				curl_set_options = 0;
 			}
 
 //			curl_easy_setopt(curl_handle, CURLOPT_MAX_RECV_SPEED_LARGE, (off_t)3000000);
 //			curl_easy_setopt(curl_handle, CURLOPT_DNS_USE_GLOBAL_CACHE, 0);
-			curl_easy_setopt(curl_handle, CURLOPT_DNS_CACHE_TIMEOUT, 12);
+				curl_easy_setopt(curl_handle, CURLOPT_BUFFERSIZE, 64000*5);
 			curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&carg);
 			curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, error_buf);
 			curl_easy_setopt(curl_handle, CURLOPT_URL, url);
