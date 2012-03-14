@@ -459,7 +459,7 @@ void *mlb_refresh_playlists_thread(void *t)
 
 
 // *********************************
-
+/*
 MLB_HLS_IV_STRUCT * mlb_getiv_from_pos(MLB_HLS_STREAM_URL* stream, int pos)
 {
 	MLB_HLS_IV_STRUCT  * ret = NULL;
@@ -477,6 +477,34 @@ MLB_HLS_IV_STRUCT * mlb_getiv_from_pos(MLB_HLS_STREAM_URL* stream, int pos)
 	}
 	return ret;
 }
+*/
+
+MLB_HLS_IV_STRUCT * mlb_getiv_from_pos(MLB_HLS_STREAM_URL* stream, int pos)
+{
+	MLB_HLS_IV_STRUCT  * ret = &stream->iv_keys[stream->iv_count-1];
+	if (stream && pos >0)
+	{
+		int i;
+		for(i=0; i < stream->iv_count; i++)
+		{
+			if (stream->iv_keys[i].pos == pos)
+			{
+				ret = &stream->iv_keys[i];
+				break;
+			}
+			else if (stream->iv_keys[i+1].pos > stream->iv_keys[i].pos)
+			{
+				if (pos > stream->iv_keys[i].pos && pos < stream->iv_keys[i+1].pos)
+				{
+					ret = &stream->iv_keys[i];
+					break;
+				}
+			}
+		}
+	}
+	return ret;
+}
+
 
 MLB_HLS_KEY * mlb_getkey_from_pos(MLB_HLS_STREAM_URL* stream, int pos)
 {
@@ -930,8 +958,6 @@ int mlb_master_switch_bw(MLB_HLS_MASTER_URL * master, int down, int bps)
 			master->current_priority = j;
 			master->current_iv = mlb_getiv_from_pos(&master->streams[j], master->last_key_line);
 			master->current_aeskey = mlb_getkey_from_pos(&master->streams[j], master->last_key_line);
-//			master->current_iv = mlb_getiv_from_pos(&master->streams[j], master->current_seg_line-1);
-//			master->current_aeskey = mlb_getkey_from_pos(&master->streams[j], master->current_seg_line-1);
 
 //			printf("Last_key pos: %d, \n", master->last_key_line);
 
