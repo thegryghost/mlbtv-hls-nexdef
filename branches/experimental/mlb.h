@@ -31,17 +31,15 @@ struct mlb_hls_iv_struct
 {
 	int pos;
 	uint8_t iv[AES128_KEY_SIZE];
-	uint8_t *aes;
 };
 typedef struct mlb_hls_iv_struct MLB_HLS_IV_STRUCT;
 
 struct mlb_hls_key
 {
-	int key_len_org;
-	int key_len_decoded;
-
-	uint8_t *key_decoded;
-	uint8_t *key_org;
+	int pos;
+	char key_url[MAX_STR_LEN];
+	uint8_t aes_key[AES128_KEY_SIZE];
+	uint8_t haz_aes;
 };
 typedef struct mlb_hls_key MLB_HLS_KEY;
 
@@ -78,10 +76,12 @@ struct mlb_hls_stream_url
 	uint8_t cache;
 	int8_t state;
 	uint8_t key_type;
-	uint8_t aes_key[AES128_KEY_SIZE];
 
 	int iv_count;
 	MLB_HLS_IV_STRUCT iv_keys[MLB_MAX_IV_COUNT];
+
+	int dec_key_count;
+	MLB_HLS_KEY dec_keys[50];
 
 	int line_pos;
 	int line_count;
@@ -140,7 +140,9 @@ struct mlb_hls_master_url
 
 	int seg_count;
 
+	MLB_HLS_KEY *current_dec_key;
 	MLB_HLS_IV_STRUCT *current_iv;
+
 	MLB_HLS_STREAM_URL streams[MLB_HLS_MAX_STREAMS];
 
 	pthread_t url_thread;
@@ -161,7 +163,6 @@ struct mlb_url_pass
 {
 	MLB_HLS_MASTER_URL *parent;
 	MLB_HLS_STREAM_URL *stream;
-	MLB_HLS_IV_STRUCT *iv;
 
 	int write_size;
 	int write_pos;
