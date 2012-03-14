@@ -956,7 +956,7 @@ void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 	char *line = NULL;
 	int i, loop = 1;
 
-	printf("[MLB] -- Processing playlist, bw: %d Start line: %d\n", stream->bandwidth, stream->line_pos);
+//	printf("[MLB] -- Processing playlist, bw: %d Start line: %d\n", stream->bandwidth, stream->line_pos);
 	stream->line_count = memfile_getline_count(m);
 
 	for(i=0; i < stream->line_pos; i++)
@@ -1440,7 +1440,8 @@ int main (int argc, char *argv[])
 
 //							printf("Getting: %d (%d)\n", master->current_seg_line, master->streams[master->current_priority].bandwidth);
 
-							if (mlb_stream_getline(&master->streams[i], master->current_seg_line, (char*)&tmp, MAX_STR_LEN) > 0)
+//							if (mlb_stream_getline(&master->streams[i], master->current_seg_line, (char*)&tmp, MAX_STR_LEN) > 0)
+							if (mlb_stream_getline(&master->streams[master->current_priority], master->current_seg_line, (char*)&tmp, MAX_STR_LEN) > 0)
 							{
 								if (tmp[0] == '#' && tmp[1] == 'E' && tmp[2] == 'X' && tmp[3] == 'T')
 								{
@@ -1530,7 +1531,7 @@ int main (int argc, char *argv[])
 											master->decrypted_size += decrypted_bytes;
 											master->decrypted_count++;
 											master->decrypted_time += (t2 - t1);
-											printf("[MLB] Chunk: %s (bw: %d, time: %0.2fs) [Avg. D/L Rate of last %d chunks: %0.2f (Mbps)]\n",  tmp, master->streams[master->current_priority].bandwidth, (t2-t1)/1000.0, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
+											printf("[MLB] Get: %s (bw: %d, time: %0.2fs) [Avg. D/L Rate of last %d chunks: %0.2f Mbps]\n",  tmp, master->streams[master->current_priority].bandwidth, (t2-t1)/1000.0, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
 //											printf("[MLB] total bytes decrypted: %d (current: %s) (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 //											printf("[MLB] total bytes decrypted: %d (%ds) -- %s (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 
