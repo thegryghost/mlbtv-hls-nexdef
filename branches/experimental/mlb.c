@@ -67,7 +67,7 @@ void mlb_print_master(MLB_HLS_MASTER_URL * master)
 		printf("[MLB] Decryption Key: ");
 		for (i = 0; i < AES128_KEY_SIZE; i++)
 		{
-			printf("%02x", master->dec_key[i]);
+			printf("%02x", master->aeskey[i]);
 		}
 		printf("\n");
 		printf("[MLB] Params: %s\n", master->params);
@@ -91,7 +91,7 @@ void mlb_print_iv(MLB_HLS_IV_STRUCT *m)
 	printf("\n");
 }
 
-void mlb_print_dec_key(MLB_HLS_KEY *m)
+void mlb_print_aes_key(MLB_HLS_KEY *m)
 {
 	int j;
 	printf("KEY Struct at pos (%d):\n", m->pos);
@@ -100,7 +100,7 @@ void mlb_print_dec_key(MLB_HLS_KEY *m)
 	{
 		printf("\tdeckey (encrypted): 0x");
 		for (j = 0; j < AES128_KEY_SIZE; j++)
-			printf("%02x", m->dec_key[j]);
+			printf("%02x", m->aes_key[j]);
 		printf("\n");
 	}
 */
@@ -177,6 +177,7 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 				curl_easy_setopt(curl_handle, CURLOPT_DNS_CACHE_TIMEOUT, 30);
 				curl_easy_setopt(curl_handle, CURLOPT_BUFFERSIZE, 64000*4);
 				curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, CURL_USER_AGENT_STR);
+				curl_easy_setopt(curl_handle, CURLOPT_FAILONERROR, 1);
 				curl_set_options = 0;
 			}
 
@@ -185,15 +186,18 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 			curl_easy_setopt(curl_handle, CURLOPT_URL, url);
 
 			res = curl_easy_perform(curl_handle);
-
+//			printf("CURL: %d\n", res);
 			if (res != 0)
 			{
 				int i;
-				printf("-------- CURL fetch error: %s\n", error_buf);
+				printf("[MLB] (CURL ERR) %s (URL: %s)\n", error_buf, url);
 				for (i=0; i < 4; i++)
 					SLEEP_250MS
 				if (carg.data)
+				{
 					free(carg.data);
+				}
+				return 0;
 			}
 		} while (res != 0);
 	}
@@ -476,22 +480,22 @@ MLB_HLS_IV_STRUCT * mlb_getiv_from_pos(MLB_HLS_STREAM_URL* stream, int pos)
 
 MLB_HLS_KEY * mlb_getkey_from_pos(MLB_HLS_STREAM_URL* stream, int pos)
 {
-	MLB_HLS_KEY  * ret = &stream->dec_keys[stream->dec_key_count-1];
+	MLB_HLS_KEY  * ret = &stream->aes_keys[stream->aes_key_count-1];
 	if (stream && pos >0)
 	{
 		int i;
-		for(i=0; i < stream->dec_key_count; i++)
+		for(i=0; i < stream->aes_key_count; i++)
 		{
-			if (stream->dec_keys[i].pos == pos)
+			if (stream->aes_keys[i].pos == pos)
 			{
-				ret = &stream->dec_keys[i];
+				ret = &stream->aes_keys[i];
 				break;
 			}
-			else if (stream->dec_keys[i+1].pos > stream->dec_keys[i].pos)
+			else if (stream->aes_keys[i+1].pos > stream->aes_keys[i].pos)
 			{
-				if (pos > stream->dec_keys[i].pos && pos < stream->dec_keys[i+1].pos)
+				if (pos > stream->aes_keys[i].pos && pos < stream->aes_keys[i+1].pos)
 				{
-					ret = &stream->dec_keys[i];
+					ret = &stream->aes_keys[i];
 					break;
 				}
 			}
@@ -553,9 +557,9 @@ int mlb_hls_key_cache(MLB_HLS_STREAM_URL *stream, char *url)
 	if (stream)
 	{
 		int i;
-		for(i=0; i < stream->dec_key_count; i++)
+		for(i=0; i < stream->aes_key_count; i++)
 		{
-			if (strncmp(stream->dec_keys[i].key_url, url, MAX_STR_LEN) == 0)
+			if (strncmp(stream->aes_keys[i].key_url, url, MAX_STR_LEN) == 0)
 				return i;
 		}
 	}
@@ -587,29 +591,29 @@ void mlb_get_hls_key(MLB_HLS_STREAM_URL *stream, int pos)
 			b64decode(_tmp_key);
 
 //			for (i = 0; i < AES128_KEY_SIZE; i++)
-//				stream->dec_keys[stream->dec_key_count].dec_key[i] = (uint8_t)_tmp_key[i];
-//			stream->dec_keys[stream->dec_key_count].haz_dec = 1;
+//				stream->aes_keys[stream->aes_key_count].dec_key[i] = (uint8_t)_tmp_key[i];
+//			stream->aes_keys[stream->aes_key_count].haz_dec = 1;
 
 			if (stream->parent)
 			{
 				MLB_HLS_MASTER_URL * master = stream->parent;
 				AES_KEY key = {0};
 
-				AES_set_decrypt_key(master->dec_key, 128, &key); // 128 bits, not bytes
-				AES_decrypt(_tmp_key, stream->dec_keys[stream->dec_key_count].aes_key, &key);
-//				AES_decrypt((char *)stream->dec_keys[stream->dec_key_count].dec_key[i], stream->dec_keys[stream->dec_key_count].aes_key, &key);
-				stream->dec_keys[stream->dec_key_count].haz_aes = 1;
+				AES_set_decrypt_key(master->aeskey, 128, &key); // 128 bits, not bytes
+				AES_decrypt(_tmp_key, stream->aes_keys[stream->aes_key_count].aes_key, &key);
+//				AES_decrypt((char *)stream->aes_keys[stream->aes_key_count].dec_key[i], stream->aes_keys[stream->aes_key_count].aes_key, &key);
+				stream->aes_keys[stream->aes_key_count].haz_aes = 1;
 			}
 
 			if (_tmp_key)
 				free(_tmp_key);
 
-			strncpy(stream->dec_keys[stream->dec_key_count].key_url, stream->hls_key_url, MAX_STR_LEN);
-			stream->dec_keys[stream->dec_key_count].pos = (pos+1);
+			strncpy(stream->aes_keys[stream->aes_key_count].key_url, stream->hls_key_url, MAX_STR_LEN);
+			stream->aes_keys[stream->aes_key_count].pos = (pos+1);
 
-			mlb_print_dec_key(&stream->dec_keys[stream->dec_key_count]);
+			//mlb_print_dec_key(&stream->aes_keys[stream->aes_key_count]);
 
-			stream->dec_key_count++;
+			stream->aes_key_count++;
 //			mlb_key_url_handler((void*)fetched_data, 1, (size_t)fetched_len, (void*)stream);
 		}
 
@@ -694,7 +698,7 @@ MLB_HLS_MASTER_URL * _mlb_init_master(void)
 		for(i=0; i < MLB_HLS_MAX_STREAMS; i++)
 		{
             ret->streams[i].state = MLB_HLS_STATE_LIVE;
-            ret->streams[i].cache = 1;
+//            ret->streams[i].cache = 1;
             ret->streams[i].parent = ret;
             ret->streams[i].priority = -1;
 		}
@@ -759,7 +763,7 @@ MLB_HLS_MASTER_URL * mlb_get_master(MLB_OPT_ARGS* args)
 
 				for (i = 0; i < AES128_KEY_SIZE; i++)
 				{
-					ret->dec_key[i] = (uint8_t)_tmp_key[i];
+					ret->aeskey[i] = (uint8_t)_tmp_key[i];
 				}
 				if (_tmp_key)
 					free(_tmp_key);
@@ -925,7 +929,9 @@ int mlb_master_switch_bw(MLB_HLS_MASTER_URL * master, int down, int bps)
 //			printf("debug, switching from: %d, switching to: %d (index in list: %d)\n", master->streams[master->current_priority].bandwidth, master->streams[j].bandwidth, j);
 			master->current_priority = j;
 			master->current_iv = mlb_getiv_from_pos(&master->streams[j], master->last_key_line);
-			master->current_dec_key = mlb_getkey_from_pos(&master->streams[j], master->last_key_line);
+			master->current_aeskey = mlb_getkey_from_pos(&master->streams[j], master->last_key_line);
+//			master->current_iv = mlb_getiv_from_pos(&master->streams[j], master->current_seg_line-1);
+//			master->current_aeskey = mlb_getkey_from_pos(&master->streams[j], master->current_seg_line-1);
 
 //			printf("Last_key pos: %d, \n", master->last_key_line);
 
@@ -1060,9 +1066,14 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 		}
 
 		fetched_len = mlb_get_url(content_url, &fetched_data, master->args->proxy_addr);
+//		printf("Fetching URL (%d): %s\n", fetched_len, content_url);
 
 		if (fetched_len > 0)
 		{
+//			int z;
+//			uint8_t tmp_iv[AES128_KEY_SIZE] = {0};
+//			uint8_t tmp_aes[AES128_KEY_SIZE] = {0};
+
 			int out_len = 0, lastDecryptLength = 0;
 			EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 
@@ -1074,11 +1085,29 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 			}
 
 			EVP_CIPHER_CTX_init(ctx);
+//			mlb_print_iv(master->current_iv);
+//			mlb_print_aes_key(master->current_aeskey);
 
-			mlb_print_iv(master->current_iv);
-			mlb_print_dec_key(master->current_dec_key);
+/*
+			memcpy(tmp_iv, master->current_iv->iv, AES128_KEY_SIZE);
+			memcpy(tmp_aes, master->current_aeskey->aes_key, AES128_KEY_SIZE);
 
-			if (EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, master->current_dec_key->aes_key, master->current_iv->iv) == 1)
+			printf("\tIV: ");
+			for (z = 0; z < AES128_KEY_SIZE; z++)
+			{
+				printf("%02x", tmp_iv[z]);
+			}
+			printf("\n");
+
+			printf("\tAES: ");
+			for (z = 0; z < AES128_KEY_SIZE; z++)
+			{
+				printf("%02x", tmp_aes[z]);
+			}
+			printf("\n");
+*/
+			if (EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, master->current_aeskey->aes_key, master->current_iv->iv) == 1)
+//			if (EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, tmp_aes, tmp_iv) == 1)
 			{
 				if (EVP_DecryptUpdate(ctx, master->media_out, &out_len, p->write_buf, p->write_pos) == 1)
 				{
@@ -1103,7 +1132,6 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 
 			EVP_CIPHER_CTX_cleanup(ctx);
 		}
-
 
 		master->seg_count++;
 
@@ -1345,7 +1373,7 @@ int main (int argc, char *argv[])
 			}
 
 			mlb_master_sort_streams(master);
-			mlb_print_master(master);
+//			mlb_print_master(master);
 			pthread_create(&master->url_thread, NULL, mlb_refresh_playlists_thread, (void*)master);
 
 			while (master->do_loop)
@@ -1391,13 +1419,14 @@ int main (int argc, char *argv[])
 				if (master->current_seg_line)
 				{
 					int j;
-					char tmp[MAX_STR_LEN];
-					MLB_URL_PASS p;
+					char tmp[MAX_STR_LEN] = {0};
+					MLB_URL_PASS p = {0};
 
 					for(i=0; i < master->stream_count; i++)
 					{
 						if (!master->do_loop)
 							break;
+
 						if (i != master->current_priority)
 							continue;
 
@@ -1417,23 +1446,16 @@ int main (int argc, char *argv[])
 								{
 									if (strstr(tmp, HLS_KEY_MARKER) != NULL)
 									{
-										int q;
 										master->current_iv = mlb_getiv_from_pos(&master->streams[i], master->current_seg_line);
-										master->current_dec_key = mlb_getkey_from_pos(&master->streams[i], master->current_seg_line);
+										master->current_aeskey = mlb_getkey_from_pos(&master->streams[i], master->current_seg_line);
 //										printf("HERE: %d (%d)\n", master->current_seg_line, master->streams[i].dec_key_count);
-/*
-										for (q=0; q < master->streams[i].dec_key_count; q++)
-										{
-											printf("1: %d\n", master->streams[i].dec_keys[q].pos);
-										}
-										if (!master->current_dec_key)
-											printf("JJJJJJJJJJJJ\n");
-*/
+
 										master->last_key_line = master->current_seg_line;
 									}
 									else if (strstr(tmp, HLS_END_MARKER) != NULL)
 									{
 										int j;
+										printf("STEP1: %d -- %d\n", master->current_seg_line, master->seg_count);
 										if (mlb_master_switch_bw(master, 1, 0))
 											printf("[MLB] --------- Stepping UP bandwidth\n");
 
@@ -1474,6 +1496,12 @@ int main (int argc, char *argv[])
 										decrypted_bytes = mlb_hls_get_and_decrypt(&p, tmp);
 										t2 = get_time_ms();
 
+										if (decrypted_bytes <= 0)
+										{
+											master->do_loop = 0;
+											break;
+										}
+
 										s = (decrypted_bytes/((t2 - t1)/1000.0)) * 8;
 
 										mlb_args->last_bps_time[mlb_args->last_bps_pos++] = (uint32_t) floor(s);
@@ -1493,15 +1521,16 @@ int main (int argc, char *argv[])
 										if (q && q > mlb_args->last_bps_segcount_avg-1)
 										{
 //											printf("Average Aggregate (%d): %d -- %0.2f\n", q, (tmp_total/q), (tmp_total/q)/1000000.0);
+//										printf("STEP2\n");
 											mlb_master_switch_bw(master, 0, (int)floor(s));
 										}
 
-										if (decrypted_bytes)
+										if (decrypted_bytes > 0)
 										{
 											master->decrypted_size += decrypted_bytes;
 											master->decrypted_count++;
 											master->decrypted_time += (t2 - t1);
-											printf("[MLB] Segment: %s (bw: %d -- %d), D/L Rate [%d]: %0.2f (Mbps)\n",  tmp, master->streams[master->current_priority].bandwidth, (t2-t1)/1000, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
+											printf("[MLB] Chunk: %s (bw: %d, time: %0.2fs) [Avg. D/L Rate of last %d chunks: %0.2f (Mbps)]\n",  tmp, master->streams[master->current_priority].bandwidth, (t2-t1)/1000.0, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
 //											printf("[MLB] total bytes decrypted: %d (current: %s) (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 //											printf("[MLB] total bytes decrypted: %d (%ds) -- %s (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 
