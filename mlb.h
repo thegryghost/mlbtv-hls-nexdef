@@ -12,12 +12,11 @@
 #define MAX_STR_LEN				1024
 #define MLB_KEY_TYPE_AES128		1
 #define MLB_HLS_MAX_STREAMS		12
-#define MLB_MAX_IV_COUNT		800
+#define MLB_MAX_IV_COUNT		2000
 
 #define MLB_HLS_STATE_END		0
 #define MLB_HLS_STATE_LIVE		1
 #define MLB_HLS_STATE_BAD		2
-
 
 static const char *MLB_STATE_STRINGS[3] =
 {
@@ -25,7 +24,6 @@ static const char *MLB_STATE_STRINGS[3] =
 	"Still Live",
 	"Invalid Playlist"
 };
-
 
 struct mlb_hls_iv_struct
 {
@@ -73,15 +71,14 @@ struct mlb_hls_stream_url
 	CURL *key_curl;
 	CURLcode res;
 
-	uint8_t cache;
 	int8_t state;
 	uint8_t key_type;
 
 	int iv_count;
 	MLB_HLS_IV_STRUCT iv_keys[MLB_MAX_IV_COUNT];
 
-	int dec_key_count;
-	MLB_HLS_KEY dec_keys[50];
+	int aes_key_count;
+	MLB_HLS_KEY aes_keys[50];
 
 	int line_pos;
 	int line_count;
@@ -121,7 +118,7 @@ struct mlb_hls_master_url
 	char base_url[MAX_STR_LEN];
 	char master_url[MAX_STR_LEN];
 
-	uint8_t dec_key[AES128_KEY_SIZE];
+	uint8_t aeskey[AES128_KEY_SIZE];
 	char params[MAX_STR_LEN];
 
 	long stream_start_time;
@@ -135,12 +132,10 @@ struct mlb_hls_master_url
 	double decrypted_time;
 
 	int current_seg_line;
-
 	int last_key_line;
-
 	int seg_count;
 
-	MLB_HLS_KEY *current_dec_key;
+	MLB_HLS_KEY *current_aeskey;
 	MLB_HLS_IV_STRUCT *current_iv;
 
 	MLB_HLS_STREAM_URL streams[MLB_HLS_MAX_STREAMS];
