@@ -1450,7 +1450,7 @@ int main (int argc, char *argv[])
 								if (master->streams[i].state == MLB_HLS_STATE_END)
 									master->current_seg_line = 1;
 								else
-									master->current_seg_line = master->streams[i].line_count - 3;
+									master->current_seg_line = master->streams[i].line_count - 6;
 							}
 
 							printf("[MLB] Start from line: %d (%d), State: %s\n", master->current_seg_line, master->streams[i].line_count, MLB_STATE_STRINGS[master->streams[i].state]);
