@@ -1088,7 +1088,13 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 		MLB_HLS_STREAM_URL *stream = p->stream;
 
 		segtime = stream->seg_time + 2;
-		sprintf(content_url, "%s%s%s\0", master->base_url, stream->base_url_media, url);
+
+//		printf("1: %s, 2: %s, 3: %s\n", master->base_url, stream->base_url_media, url);
+
+		if (url[0] == 'h' && url[1] == 't' && url[2] == 't' && url[3] == 'p')
+			sprintf(content_url, "%s\0", url);
+		else
+			sprintf(content_url, "%s%s%s\0", master->base_url, stream->base_url_media, url);
 
 		if (show_debug)
 		{
