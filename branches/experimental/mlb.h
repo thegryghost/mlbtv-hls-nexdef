@@ -10,16 +10,21 @@
 
 #define AES128_KEY_SIZE			16
 #define MAX_STR_LEN				1024
-#define MLB_KEY_TYPE_AES128		1
 #define MLB_HLS_MAX_STREAMS		12
 #define MLB_MAX_IV_COUNT		2000
 
-#define MLB_HLS_STATE_END		0
-#define MLB_HLS_STATE_LIVE		1
-#define MLB_HLS_STATE_BAD		2
 
-static const char *MLB_STATE_STRINGS[3] =
+#define MLB_KEY_TYPE_NONE		0
+#define MLB_KEY_TYPE_AES128		1
+
+
+#define MLB_HLS_STATE_END		1
+#define MLB_HLS_STATE_LIVE		2
+#define MLB_HLS_STATE_BAD		3
+
+static const char *MLB_STATE_STRINGS[4] =
 {
+	"",
 	"End of Playlist",
 	"Still Live",
 	"Invalid Playlist"
@@ -118,6 +123,7 @@ struct mlb_hls_master_url
 	char base_url[MAX_STR_LEN];
 	char master_url[MAX_STR_LEN];
 
+	uint8_t haz_aeskey;
 	uint8_t aeskey[AES128_KEY_SIZE];
 	char params[MAX_STR_LEN];
 

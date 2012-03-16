@@ -84,25 +84,34 @@ int memfile_getline_count(TEXTFILE_IN_MEMORY *m)
 	return -1;
 }
 
+// '\r' = 0x0D
+// '\n' = 0x0A
+
+
 char * memfile_getnext_line(TEXTFILE_IN_MEMORY *m, int mem)
 {
 	char *ret = NULL;
 	if (m && m->pos < m->data_size)
 	{
 		int i;
-
 		for(i=m->pos; i < m->data_size; i++)
 		{
 			if (m->data[i] == '\n' || m->data[i] == '\0')
 			{
 				m->data[i] = '\0';
+				if (i > 0 && m->data[i-1] == 0x0D)
+					m->data[i-1] = '\0';
 				break;
 			}
 		}
 
 		if (i > m->pos)
 		{
+			if (i == m->data_size)
+				m->data[i]  = '\0';
 			ret = (char *) &m->data[m->pos];
+			if (m->data[i+1] == 0x00)
+				i++;
 			m->pos = (i+1);
 		}
 	}
