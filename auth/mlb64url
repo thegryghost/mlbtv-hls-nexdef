@@ -1,0 +1,89 @@
+#!/bin/bash
+
+#USER_AGENT="\"Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Firefox/2.0.0.13"\"
+USER_AGENT="\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.79 Safari/535.11\""
+
+TMPFILE="MLBTMP-${RANDOM}.xml"
+SCENARIO="HTTP_CLOUD_WIRED"
+MLB_AUTHURL="https://secure.mlb.com/account/topNavLogin.jsp"
+MLB_LOGOUTURL="https://secure.mlb.com/enterworkflow.do?flowId=registration.logout&c_id=mlb"
+CKFILE="mlb_cookies.txt"
+
+MYEMAIL=""
+MYPASS=""
+
+IPID="NONE"
+IPID_EXPIRE=-1
+FPRT="NONE"
+
+FTMU="NONE"
+FTMU_EXPIRE=-1
+
+#EPOCH=`date +%s`
+#echo "epoch ${EPOCH}"
+
+function get_cookies {
+	echo "Fetching Cookies"
+	curl -s --cookie-jar ${CKFILE} $MLB_AUTHURL -d "emailAddress=${MYEMAIL}&password=${MYPASS}" -o /dev/null --user-agent ${USER_AGENT}
+}
+
+function get_readcookies {
+	if [ -e $CKFILE ]; then
+		IPID=`cat ${CKFILE} | grep ipid | awk '{print $7}'`
+		IPID_EXPIRE=`cat ${CKFILE} | grep ipid | awk '{print $5}'`
+		FPRT=`cat ${CKFILE} | grep fprt | awk '{print $7}'`
+
+		if [ -z $IPID ]; then
+			IPID="NONE"
+			IPID_EXPIRE=-1
+			FPRT="NONE"
+		else
+		echo "Haz Cookies: ipid=$IPID fptr=$FPRT"
+		fi
+	fi
+}
+
+function get_readcookies2 {
+	if [ -e $CKFILE ]; then
+		FTMU=`cat ${CKFILE} | grep ftmu | awk '{print $7}'`
+		FTMU_EXPIRE=`cat ${CKFILE} | grep ftmu | awk '{print $5}'`
+	fi
+}
+
+function logout {
+	curl -s --cookie-jar ${CKFILE} $MLB_LOGOUTURL -o $TMPFILE
+	MSG=`cat $TMPFILE | grep \<h3\> | cut -d'>' -f 2 | cut -d'<' -f1`
+	echo "Logout message: $MSG"
+}
+
+get_readcookies
+
+if [ ${IPID} = "NONE" ]; then
+	get_cookies
+	get_readcookies
+fi
+
+if [ ${IPID} = "NONE" ]; then
+	echo "NO COOKIES.. EXIT"
+	exit
+fi
+
+curl -s --cookie ${CKFILE} --cookie-jar ${CKFILE} "http://www.mlb.com/enterworkflow.do?flowId=media.media" -o /dev/null --user-agent ${USER_AGENT}
+
+get_readcookies2
+
+OPTS="sessionKey=$FTMU&identityPointId=$IPID&contentId=$2&playbackScenario=$SCENARIO&eventId=$1&fingerprint=$FPRT"
+#echo "curl -s --cookie ${CKFILE} --cookie-jar ${CKFILE} \"https://secure.mlb.com/pubajaxws/bamrest/MediaService2_0/op-findUserVerifiedEvent/v-2.3?$OPTS\""
+curl -s --cookie ${CKFILE} --cookie-jar ${CKFILE} "https://secure.mlb.com/pubajaxws/bamrest/MediaService2_0/op-findUserVerifiedEvent/v-2.3?$OPTS" -o $TMPFILE --user-agent ${USER_AGENT}
+
+B64=`cat $TMPFILE | cut -d'[' -f3 | cut -d']' -f1`
+
+#logout
+
+if [ -e $TMPFILE ]; then
+	rm $TMPFILE
+	echo "Base64_URL: $B64"
+else
+	echo "Base64_URL: NONE"
+fi
+
