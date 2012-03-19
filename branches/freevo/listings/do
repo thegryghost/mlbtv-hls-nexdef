@@ -1,0 +1,16 @@
+#!/bin/bash
+
+YEAR=`date +"%Y"`
+MONTH=`date +"%m"`
+DAY=`date +"%d"`
+TMPFILE="TMP-$RANDOM.xml"
+
+#echo "$MONTH, $DAY, $YEAR"
+URL="http://gdx.mlb.com/components/game/mlb/year_${YEAR}/month_${MONTH}/day_${DAY}/grid.xml"
+#URL="http://gdx.mlb.com/components/game/mlb/year_${YEAR}/month_${MONTH}/day_17/grid.xml"
+
+wget --quiet -O $TMPFILE $URL
+
+./mlblist -i $TMPFILE
+
+rm $TMPFILE
