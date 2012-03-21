@@ -51,6 +51,7 @@ char innings_url[MAX_STR_LEN]		= {0};
 char event_start[MAX_STR_LEN]		= {0};
 
 time_t game_start_time				= {0};
+char game_start_str[MAX_STR_LEN]	= {0};
 
 MLB_AUTH_STRUCT auth_struct			= {0};
 
@@ -325,21 +326,17 @@ char * xml_get_attr(xmlNodePtr a_node, int count, char * checkstr, int level)
 		if (cur_node->type == XML_ELEMENT_NODE)
 		{
 			xmlAttrPtr tmp_attr = cur_node->properties;
-
-			if (tmp_attr && tmp_attr->children)
+			while(tmp_attr && tmp_attr->children)
 			{
-//				printf(" -- %s:%s\n", tmp_attr->name, tmp_attr->children->content);
-				if (count == level && strncmp(tmp_attr->children->content, checkstr, MAX_STR_LEN) == 0)
+//				printf("[ATTR (%d)] %s:%s\n", count, tmp_attr->name, tmp_attr->children->content);
+				if (count == level && strncmp(tmp_attr->name, checkstr, MAX_STR_LEN) == 0)
 				{
-					if (cur_node->children)
-					{
-						ret = calloc(1, MAX_STR_LEN);
-						strncpy(ret, cur_node->children->content, MAX_STR_LEN);
-						break;
-					}
+					ret = calloc(1, MAX_STR_LEN);
+					strncpy(ret, tmp_attr->children->content, MAX_STR_LEN);
+					break;
 				}
+				tmp_attr = tmp_attr->next;
 			}
-
 			if (!ret)
 				ret = xml_get_attr(cur_node->children, count+1, checkstr, level);
 
@@ -347,7 +344,6 @@ char * xml_get_attr(xmlNodePtr a_node, int count, char * checkstr, int level)
 	}
 	return ret;
 }
-
 static void
 print_element_names(xmlNode * a_node, int count)
 {
@@ -368,6 +364,7 @@ print_element_names(xmlNode * a_node, int count)
 	printf("\n");
 }
 
+/*
 static void
 print_element_names1(xmlNode * a_node, int count)
 {
@@ -378,24 +375,21 @@ print_element_names1(xmlNode * a_node, int count)
 		if (cur_node->type == XML_ELEMENT_NODE)
 		{
 			xmlAttrPtr tmp_attr = cur_node->properties;
-
-			if (tmp_attr && tmp_attr->children)
-				printf(" -- %s:%s\n", tmp_attr->name, tmp_attr->children->content);
-			printf("nodetype: Element, name: %s (%s)", cur_node->name, cur_node->content);
-			if (cur_node->children)
-				printf(" : %s (%s)", cur_node->children->content, cur_node->children->name);
-
-			printf(" [%d]\n", count);
-
+			while(tmp_attr && tmp_attr->children)
+			{
+				printf("[ATTR (%d)] %s:%s\n", count, tmp_attr->name, tmp_attr->children->content);
+				tmp_attr = tmp_attr->next;
+			}
 			print_element_names1(cur_node->children, count+1);
 		}
 	}
 	printf("\n");
 }
-
+*/
 
 int mlb_playback(MLB_AUTH_STRUCT *auth)
 {
+	int ret = 0;
 	CURLcode res = {0};
 	char tmp_str[MAX_STR_LEN] = {0}, tmp_str2[MAX_STR_LEN] = {0};
 	char *tmp_file = NULL;
@@ -413,40 +407,61 @@ int mlb_playback(MLB_AUTH_STRUCT *auth)
 
 	if (carg.data)
 	{
-		int z = 0;
+		int z = -1;
 		xmlDocPtr doc = {0};
 		xmlNode *root_element = NULL;
 		xmlNodePtr firstNode = NULL;
 		doc = xmlParseMemory(carg.data, carg.size);
 
+//			printf("HMM: %s\n", carg.data);
 		if (doc)
 		{
 			char *tmp = NULL;
+			//print_element_names(doc->children, 1);
 
-//			printf("HMM: %s\n", carg.data);
-			tmp = xml_get_element(doc->children, 1, "url", 5);
-			strncpy(base64_url, tmp, MAX_STR_LEN);
-//			printf("1: %s\n", base64_url);
-			free(tmp);
+			tmp = xml_get_element(doc->children, 1, "status-code", 2);
+			if (tmp)
+			{
+				z = atoi(tmp);
+				free(tmp);
+			}
 
-			tmp = xml_get_element(doc->children, 1, "innings-index", 6);
-			strncpy(innings_url, tmp, MAX_STR_LEN);
-//			printf("2: %s\n", innings_url);
-			free(tmp);
+			if (z == 1)
+			{
+				tmp = xml_get_element(doc->children, 1, "url", 5);
+				if (tmp)
+				{
+					strncpy(base64_url, tmp, MAX_STR_LEN);
+//					printf("1: %s\n", base64_url);
+					free(tmp);
+				}
 
-			tmp = xml_get_attr(doc->children, 1, "event_date", 5);
-			strncpy(event_start, tmp, MAX_STR_LEN);
-//			printf("3: %s\n", event_start);
-			free(tmp);
-//			print_element_names1(doc->children, 1);
-
+				tmp = xml_get_element(doc->children, 1, "innings-index", 6);
+				if (tmp)
+				{
+					strncpy(innings_url, tmp, MAX_STR_LEN);
+//					printf("2: %s\n", innings_url);
+					free(tmp);
+				}
+			}
+			else
+			{
+				ret = 1;
+				tmp = xml_get_element(doc->children, 1, "status-message", 2);
+				if (tmp)
+				{
+					strncpy(innings_url, tmp, MAX_STR_LEN);
+					free(tmp);
+				}
+				printf("Failed login (%d): %s\n", z, innings_url);
+			}
 			xmlFreeDoc(doc);
 			xmlCleanupParser();
 		}
 //		printf("pb free: %" PRId64"\n", carg.size);
 		free(carg.data);
 	}
-	return 0;
+	return ret;
 }
 
 int mlb_innings_url(void)
@@ -471,33 +486,18 @@ int mlb_innings_url(void)
 
 		if (doc)
 		{
+			char *tmp = NULL;
+			tmp = xml_get_attr(doc->children, 1, "start_timecode", 1);
+			if (tmp)
+			{
+				strncpy(game_start_str, tmp, MAX_STR_LEN);
+				free(tmp);
+			}
+//			print_element_names1(doc->children, 1);
 			xmlFreeDoc(doc);
 			xmlCleanupParser();
 		}
-/*
-		char *tmp = NULL;
-//		printf("11: %s\n", carg.data);
-		tmp = strstr(carg.data, "start_timecode");
-		if (tmp)
-		{
-			int h=0, m=0, s=0;
-			int q = 0;
-			tmp += 16;
-
-			for(q = 1; q < 9; q++)
-			{
-				if (tmp[q] == '"')
-				{
-					tmp[q] = '\0';
-					break;
-				}
-			}
-			sscanf(tmp, "%d:%d:%d", &h, &m, &s);
-			game_start_time = (h*60*60) + (m * 60) + s;
-//			printf("HI: %s (%" PRId64")\n", tmp, game_start_time);
-		}
-*/
-		printf("innings free: %" PRId64"\n", carg.size);
+//		printf("innings free: %" PRId64"\n", carg.size);
 		free(carg.data);
 	}
 	return 0;
@@ -529,13 +529,13 @@ int mlb_cookie_trigger(void)
 
 void print_epoc(time_t tmp, char *str)
 {
-	printf("%s [%" PRId64"d,", str, tmp/86400);
+	printf("%s [%3" PRId64",", str, tmp/86400);
 	tmp -= (tmp/86400) * 86400;
-	printf("%" PRId64"h,", tmp/3600);
+	printf("%02" PRId64":", tmp/3600);
 	tmp -= (tmp/3600) * 3600;
-	printf("%" PRId64"m,", tmp/60);
+	printf("%02" PRId64":", tmp/60);
 	tmp -= (tmp/60) * 60;
-	printf("%" PRId64"s remaining]\n", tmp);
+	printf("%02" PRId64" remaining (days,HH:MM:SS)]\n", tmp);
 }
 
 int main (int argc, char *argv[])
@@ -570,7 +570,6 @@ int main (int argc, char *argv[])
 		read_again = 1;
 	}
 
-
 	if (auth_struct.ftmu_expire <= auth_struct.current_time)
 	{
 		mlb_wf();
@@ -592,13 +591,17 @@ int main (int argc, char *argv[])
 		print_epoc(tmp, "ftmu cookie valid");
 	}
 
-	mlb_playback(&auth_struct);
-//	print_cookies(curl_handle);
+	if (!mlb_playback(&auth_struct))
+	{
+		mlb_innings_url();
+		printf("Base64_URL: %s\n", base64_url);
+		printf("Game_Start: %s\n", game_start_str);
+	}
 
-	mlb_innings_url();
-	printf("Base64_URL: %s\n", base64_url);
-	printf("Game Start Time (seconds): %" PRId64"\n", game_start_time);
+
+//	printf("Game Start Time (seconds): %" PRId64"\n", game_start_time);
 //	printf("Inning Index: %s\n", innings_index);
+//	print_cookies(curl_handle);
 
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
