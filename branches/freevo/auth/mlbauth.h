@@ -33,5 +33,19 @@ struct mlb_auth_struct
 };
 typedef struct mlb_auth_struct MLB_AUTH_STRUCT;
 
+struct mlb_inning_struct
+{
+	uint8_t inning;
+	char top_start_time[10];
+	char bottom_start_time[10];
+};
+typedef struct mlb_inning_struct MLB_INNING_STRUCT;
+
+struct mlb_innings_struct
+{
+	char start_time[10];
+	MLB_INNING_STRUCT innings[50];
+};
+typedef struct mlb_innings_struct MLB_INNINGS_STRUCT;
 
 #endif
