@@ -63,9 +63,13 @@ struct mlb_opt_args
 	uint32_t last_bps_segcount_avg;
 	uint32_t last_bps_pos;
 
+	uint32_t start_from_user;
+
 	char launch_cmd[MAX_STR_LEN];
 	char cfg_file[MAX_STR_LEN];
 	char proxy_addr[MAX_STR_LEN];
+
+	char start_str[MAX_STR_LEN];
 
 };
 typedef struct mlb_opt_args MLB_OPT_ARGS;
@@ -126,6 +130,8 @@ struct mlb_hls_master_url
 	uint8_t haz_aeskey;
 	uint8_t aeskey[AES128_KEY_SIZE];
 	char params[MAX_STR_LEN];
+
+	uint32_t start_from_playlist;
 
 	long stream_start_time;
 	int stream_count;
