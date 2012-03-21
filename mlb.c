@@ -102,7 +102,7 @@ void mlb_print_iv(MLB_HLS_IV_STRUCT *m)
 void mlb_print_aes_key(MLB_HLS_KEY *m)
 {
 	int j;
-	printf("KEY Struct at pos (%d):\n", m->pos);
+	printf("KEY Struct at pos (%d): ", m->pos);
 /*
 	if (m->haz_dec)
 	{
@@ -947,10 +947,8 @@ int mlb_master_switch_bw(MLB_HLS_MASTER_URL * master, int down, int bps)
 //			printf("debug, switching from: %d, switching to: %d (index in list: %d)\n", master->streams[master->current_priority].bandwidth, master->streams[j].bandwidth, j);
 
 			master->current_priority = j;
-			master->current_iv = mlb_getiv_from_pos(&master->streams[j], master->last_key_line);
-			master->current_aeskey = mlb_getkey_from_pos(&master->streams[j], master->last_key_line);
-
-//			printf("Last_key pos: %d, \n", master->last_key_line);
+			master->current_iv = mlb_getiv_from_pos(&master->streams[j], master->current_seg_line);
+			master->current_aeskey = mlb_getkey_from_pos(&master->streams[j], master->current_seg_line);
 
 			return 1;
 		}
@@ -1143,10 +1141,10 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 				EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 				EVP_CIPHER_CTX_init(ctx);
 
-				if (!master->current_iv)
-					printf("ERRRRRRROR 1\n");
-				if (!master->current_aeskey)
-					printf("ERRRRRRROR 2\n");
+				if (!master->current_iv || !master->current_aeskey)
+				{
+					printf("[MLB] Decryption keys NOT SET\n");
+				}
 //				mlb_print_iv(master->current_iv);
 //				mlb_print_aes_key(master->current_aeskey);
 
@@ -1462,6 +1460,7 @@ int main (int argc, char *argv[])
 							uint32_t diff = master->args->start_from_user - master->start_from_playlist;
 							uint32_t diff2 = diff/master->streams[i].seg_time;
 //							printf("[MLB] ##### start_from_playlist: %d -- %d -- %d\n", diff,  diff2, master->streams[i].line_count);
+
 							if (master->streams[i].line_count > (diff2*1.5))
 							{
 								int s, q=0;
@@ -1527,7 +1526,6 @@ int main (int argc, char *argv[])
 							master->current_iv = mlb_getiv_from_pos(&master->streams[i], master->current_seg_line);
 							master->current_aeskey = mlb_getkey_from_pos(&master->streams[i], master->current_seg_line);
 						}
-					
 					}
 				}
 
