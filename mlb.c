@@ -963,6 +963,18 @@ int mlb_master_switch_bw(MLB_HLS_MASTER_URL * master, int down, int bps)
 	return 0;
 }
 
+uint32_t _parse_hhmmss(char * str)
+{
+	uint32_t ret = 0;
+	if (str)
+	{
+		int h=0, m=0, s=0;
+		sscanf(str, "%d:%d:%d", &h, &m, &s);
+		ret = (uint32_t)((h*60*60) + (m*60) + s);
+	}
+	return ret;
+}
+
 void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 {
 	MLB_HLS_MASTER_URL * master = stream->parent;
@@ -1000,13 +1012,23 @@ void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 				{
 					if (strncmp(line, HLS_DATETIME_MARKER, strlen(HLS_DATETIME_MARKER)) == 0)
 					{
+						uint32_t t = 0;
 						char *tmp = line + strlen(HLS_DATETIME_MARKER);
+						char *tmp2 = line + strlen(HLS_DATETIME_MARKER) + 11;
 						struct tm tm;
-//						printf("LINE: %s\n", line);
+						t = _parse_hhmmss(tmp2);
+//						printf("LINE: %s (%d)\n", tmp2, t);
 						if (strptime(tmp, MLB_HLS_TIME_FORMAT, &tm) != 0)
 							stream->start_time = mktime(&tm);
 						else
-							printf("strptime ... ERRORRORORORORO\n");
+							printf("strptime . ERRORRORORORORO\n");
+
+						if (!master->start_from_playlist)
+						{
+							master->start_from_playlist = t;
+							printf("[MLB] Playlist start: %d\n", master->start_from_playlist);
+						}
+
 //						printf("[MLB] ear: %d; month: %d; hour: %d; min: %d; sec: %d\n", 1900 +  tm.tm_year, 1+tm.tm_mon, tm.tm_hour, tm.tm_min, tm.tm_sec);
 					}
 				}
@@ -1121,6 +1143,10 @@ int mlb_hls_get_and_decrypt(MLB_URL_PASS *p, char *url)
 				EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 				EVP_CIPHER_CTX_init(ctx);
 
+				if (!master->current_iv)
+					printf("ERRRRRRROR 1\n");
+				if (!master->current_aeskey)
+					printf("ERRRRRRROR 2\n");
 //				mlb_print_iv(master->current_iv);
 //				mlb_print_aes_key(master->current_aeskey);
 
@@ -1195,7 +1221,7 @@ void display_usage(char *exe)
 //    printf("\t-V, --verbose\t\tVerbose output (big V, use multiple times to increase verbosity)\n");
 }
 
-static const char *optString = "a:B:o:s:c:p:l:f:b:m:r:?VhLd";
+static const char *optString = "a:B:o:s:c:p:l:f:F:b:m:r:?VhLd";
 
 static const struct option longOpts[] =
 {
@@ -1210,6 +1236,7 @@ static const struct option longOpts[] =
 	{ "proxy", optional_argument, NULL, 'p' },
 	{ "lw", optional_argument, NULL, 'l' },
 	{ "first", optional_argument, NULL, 'f' },
+	{ "starttime", optional_argument, NULL, 'F' },
 	{ "lock", optional_argument, NULL, 'L' },
 	{ "debug", optional_argument, NULL, 'd' },
 	{ "verbose", no_argument, NULL, 'V' },
@@ -1326,6 +1353,13 @@ uint8_t get_opts(int argc, char *const argv[], MLB_OPT_ARGS *opts)
 					opts->start_pos = 0;
 				break;
 
+			case 'F':
+				if (optarg)
+					opts->start_from_user = _parse_hhmmss(optarg);
+				else
+					opts->start_from_user = 0;
+				break;
+
 			case 'V':
 				opts->verbose++;
 				break;
@@ -1421,40 +1455,79 @@ int main (int argc, char *argv[])
 					//master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-2].pos;
 					if (!master->current_seg_line)
 					{
-						if (master->streams[i].key_type && master->streams[i].iv_count)
+						if (master->start_from_playlist &&  master->args->start_from_user &&
+							(master->args->start_from_user > master->start_from_playlist) &&
+							master->streams[i].seg_time)
 						{
-							int lc = master->streams[i].line_count;
-							int lb = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
+							uint32_t diff = master->args->start_from_user - master->start_from_playlist;
+							uint32_t diff2 = diff/master->streams[i].seg_time;
+//							printf("[MLB] ##### start_from_playlist: %d -- %d -- %d\n", diff,  diff2, master->streams[i].line_count);
+							if (master->streams[i].line_count > (diff2*1.5))
+							{
+								int s, q=0;
+								char tmp_str[MAX_STR_LEN] = {0};
 
-							if (!master->args->start_pos)
-							{
-								if (((lc - lb) / 2) -1 >= 2)
-									master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
-								else
-									master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-2].pos;
-							}
-							else
-							{
-								if (master->args->start_pos < master->streams[i].iv_count)
-									master->current_seg_line = master->streams[i].iv_keys[master->args->start_pos - 1].pos;
+								for(s=0; s< master->streams[i].line_count; s++)
+								{
+									mlb_stream_getline(&master->streams[i], s, (char*)&tmp_str, MAX_STR_LEN);
+									if (tmp_str[0] == '#' && tmp_str[1] == 'E' && tmp_str[2] =='X' && tmp_str[3] =='T' &&
+										tmp_str[4] =='I' && tmp_str[5] =='N' &&  tmp_str[6] =='F' && tmp_str[7] ==':')
+									{
+										q++;
+										if (q == diff2)
+										{
+//											printf("OFFSET!! %d (%s)\n", s, tmp_str);
+											master->current_seg_line = s+1;
+											break;
+										}
+									}
+								}
 							}
 						}
-						else if (!master->streams[i].key_type && master->streams[i].line_count)
-						{
-							if (master->args->start_pos)
-							{
-								master->current_seg_line = master->args->start_pos;
-							}
-							else
-							{
-								if (master->streams[i].state == MLB_HLS_STATE_END)
-									master->current_seg_line = 1;
-								else
-									master->current_seg_line = master->streams[i].line_count - 6;
-							}
 
-							printf("[MLB] Start from line: %d (%d), State: %s\n", master->current_seg_line, master->streams[i].line_count, MLB_STATE_STRINGS[master->streams[i].state]);
+						if (!master->current_seg_line)
+						{
+							if (master->streams[i].key_type && master->streams[i].iv_count)
+							{
+								int lc = master->streams[i].line_count;
+								int lb = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
+
+								if (master->args->start_pos)
+								{
+									if (master->args->start_pos < master->streams[i].iv_count)
+										master->current_seg_line = master->streams[i].iv_keys[master->args->start_pos - 1].pos;
+								}
+								else // live
+								{
+									if (((lc - lb) / 2) -1 >= 2)
+										master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
+									else
+										master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-2].pos;
+								}
+							}
+							else if (!master->streams[i].key_type && master->streams[i].line_count)
+							{
+								if (master->args->start_pos)
+								{
+									master->current_seg_line = master->args->start_pos;
+								}
+								else
+								{
+									if (master->streams[i].state == MLB_HLS_STATE_END)
+										master->current_seg_line = 1;
+									else
+										master->current_seg_line = master->streams[i].line_count - 6;
+								}
+								printf("[MLB] Start from line: %d (%d), State: %s\n", master->current_seg_line, master->streams[i].line_count, MLB_STATE_STRINGS[master->streams[i].state]);
+							}
 						}
+
+						if (master->current_seg_line)
+						{
+							master->current_iv = mlb_getiv_from_pos(&master->streams[i], master->current_seg_line);
+							master->current_aeskey = mlb_getkey_from_pos(&master->streams[i], master->current_seg_line);
+						}
+					
 					}
 				}
 
@@ -1519,7 +1592,6 @@ int main (int argc, char *argv[])
 								else
 								{
 									int decrypted_bytes = 0;
-
 									memset(&p, 0, sizeof(MLB_URL_PASS));
 									p.write_buf = master->media_in;
 									p.write_size = master->media_size;
