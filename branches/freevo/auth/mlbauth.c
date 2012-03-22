@@ -19,6 +19,8 @@
 #define MLB_CMARKER_FPRT			"fprt"
 #define MLB_CMARKER_FTMU			"ftmu"
 
+
+#define MLB_CFG_PROXY				"proxy_addr"
 #define MLB_CFG_USERNAME			"username"
 #define MLB_CFG_PASSWORD			"password"
 
@@ -36,6 +38,8 @@
 
 #define DEF_COOKIE_FILENAME			"cookies.txt"
 #define DEF_CFG_FILENAME			"mlbauth.cfg"
+
+char proxy_addr[MAX_STR_LEN] 		= {0};
 
 char event_id[MAX_STR_LEN] 			= {0};
 char content_id[MAX_STR_LEN] 		= {0};
@@ -59,16 +63,15 @@ CURL *curl_handle 					= NULL;
 uint8_t curl_inited 				= 0;
 uint8_t curl_set_options 			= 1;
 
-static const char *optString = "e:c:j:C:u:p:";
+static const char *optString = "e:c:j:C:p:";
 
 static const struct option longOpts[] =
 {
 	{ "eid", required_argument, NULL, 'e' },
 	{ "cid", required_argument, NULL, 'c' },
+	{ "proxy", optional_argument, NULL, 'p' },
 	{ "cj", optional_argument, NULL, 'j' },
 	{ "cfg", optional_argument, NULL, 'C' },
-	{ "user", optional_argument, NULL, 'u' },
-	{ "pass", optional_argument, NULL, 'p' },
 	{ "help", no_argument, NULL, 'h' },
 	{ NULL, no_argument, NULL, 0 }
 };
@@ -165,6 +168,11 @@ uint8_t get_opts(int argc, char *const argv[])
 					strncpy(event_id, optarg, MAX_STR_LEN);
 				break;
 
+			case 'p':
+				if (optarg)
+					strncpy(proxy_addr, optarg, MAX_STR_LEN);
+				break;
+
 			case 'c':
 				if (optarg)
 					strncpy(content_id, optarg, MAX_STR_LEN);
@@ -204,6 +212,13 @@ void cfg_read(void)
 	{
 		const char *str;
 
+
+		if(config_lookup_string(&cfg, MLB_CFG_PROXY, &str))
+		{
+			strncpy(proxy_addr, str, MAX_STR_LEN);
+			printf("Proxy: %s\n", proxy_addr);
+		}
+
 		if(config_lookup_string(&cfg, MLB_CFG_USERNAME, &str))
 		{
 			strncpy(username, str, MAX_STR_LEN);
@@ -230,6 +245,7 @@ int mlb_curl_init(void)
     {
 		curl_global_init(CURL_GLOBAL_ALL);
         curl_inited = 1;
+		printf("Using proxy: %s\n", proxy_addr);
     }
 
 	if (!curl_handle)
@@ -237,6 +253,9 @@ int mlb_curl_init(void)
 
 	curl_easy_setopt(curl_handle, CURLOPT_COOKIEFILE, cookie_filename);
 	curl_easy_setopt(curl_handle, CURLOPT_COOKIEJAR, cookie_filename);
+
+	if (strlen(proxy_addr) > 5)
+		curl_easy_setopt(curl_handle, CURLOPT_PROXY, proxy_addr);
 
 //	curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
 }
