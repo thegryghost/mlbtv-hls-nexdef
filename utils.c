@@ -3,7 +3,7 @@
 #include <memory.h>
 #include "utils.h"
 #include <openssl/evp.h>
-
+#include <sys/time.h>
 
 unsigned int htoi (const char *ptr)
 {
