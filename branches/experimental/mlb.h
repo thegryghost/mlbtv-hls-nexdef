@@ -120,6 +120,7 @@ struct mlb_hls_master_url
 	CURL *curl;
 	CURLcode res;
 
+	uint8_t force_playlist_refresh;
 	uint8_t do_loop;
 	uint32_t b64_decoded_len;
 	char b64_decoded[MAX_STR_LEN*2];
