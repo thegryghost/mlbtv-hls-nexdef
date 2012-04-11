@@ -421,7 +421,7 @@ void *mlb_refresh_playlists_thread(void *t)
 
 			pthread_mutex_unlock(&master->playlist_mutex);
 
-			if (master->args->output.name && 1)
+			if (0 && master->args->output.name)
 			{
 				struct stat st1;
 
@@ -457,7 +457,14 @@ void *mlb_refresh_playlists_thread(void *t)
 				{
 					if (!master->do_loop)
 						break;
+
+					if (master->force_playlist_refresh)
+					{
+						master->force_playlist_refresh = 0;
+						break;
+					}
 					SLEEP_250MS
+
 				}
 			}
 		}
@@ -1544,7 +1551,11 @@ int main (int argc, char *argv[])
 							continue;
 
 						if (master->current_seg_line > master->streams[i].line_count)
-							master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
+						{
+							master->force_playlist_refresh = 1;
+							continue;
+						}
+//							master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-1].pos;
 
 						do
 						{
@@ -1640,7 +1651,7 @@ int main (int argc, char *argv[])
 											master->decrypted_size += decrypted_bytes;
 											master->decrypted_count++;
 											master->decrypted_time += (t2 - t1);
-											printf("[MLB] Get: %s (bw: %d, time: %0.2fs) [Avg. D/L Rate of last %d chunks: %0.2f Mbps]\n",  tmp, master->streams[master->current_priority].bandwidth, (t2-t1)/1000.0, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
+											printf("[MLB] Get (%d): %s (bw: %d, time: %0.2fs) [Avg. D/L Rate of last %d chunks: %0.2f Mbps]\n",  master->current_seg_line, tmp, master->streams[master->current_priority].bandwidth, (t2-t1)/1000.0, mlb_args->last_bps_segcount_avg, (double)floor(s)/1000000.0);
 //											printf("[MLB] total bytes decrypted: %d (current: %s) (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 //											printf("[MLB] total bytes decrypted: %d (%ds) -- %s (%0.2fMbps -- Segcount: %d), BW: %d\n", master->decrypted_size, p.stream->seg_time * master->decrypted_count, tmp, (double)floor(s)/1000000.0, master->seg_count, master->streams[master->current_priority].bandwidth);
 
