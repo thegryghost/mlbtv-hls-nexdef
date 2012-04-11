@@ -179,8 +179,8 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 				{
 					curl_easy_setopt(curl_handle, CURLOPT_PROXY, proxy);
 				}
-				curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 2);
-				curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 30);
+				curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 5);
+				curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 60);
 				curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, mlb_generic_curl_handler);
 				curl_easy_setopt(curl_handle, CURLOPT_DNS_CACHE_TIMEOUT, 30);
 				curl_easy_setopt(curl_handle, CURLOPT_BUFFERSIZE, 64000*4);
@@ -298,17 +298,17 @@ void mlb_refresh_playlists(MLB_HLS_MASTER_URL * master)
 			sprintf(tmp_url, "%s%s\0", master->base_url, master->streams[i].base_url);
 //			printf("HMM: %s%s\n", master->base_url, master->streams[i].base_url);
 
-			if (master->streams[i].playlist)
-			{
-				free(master->streams[i].playlist);
-				master->streams[i].playlist_size = 0;
-				master->streams[i].playlist = NULL;
-			}
 
 			fetched_len = mlb_get_url(tmp_url, &fetched_data, master->args->proxy_addr);
 
 			if (fetched_len > 0)
 			{
+				if (master->streams[i].playlist && master->streams[i].playlist_size > 0)
+				{
+					free(master->streams[i].playlist);
+					master->streams[i].playlist_size = 0;
+					master->streams[i].playlist = NULL;
+				}
 				mlb_playlist_url_handler((void*)fetched_data, 1, (size_t)fetched_len, (void*)&master->streams[i]);
 			}
 
