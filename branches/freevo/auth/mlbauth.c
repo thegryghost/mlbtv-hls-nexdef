@@ -255,8 +255,21 @@ int mlb_curl_init(void)
 	curl_easy_setopt(curl_handle, CURLOPT_COOKIEJAR, cookie_filename);
 
 	if (strlen(proxy_addr) > 5)
+	{
 		curl_easy_setopt(curl_handle, CURLOPT_PROXY, proxy_addr);
-
+//		printf("Setting proxy to: %s\n", proxy_addr);
+		curl_easy_setopt(curl_handle, CURLOPT_PROXY, proxy_addr);
+		if (proxy_addr[0] == 's' && proxy_addr[1] == 'o' && proxy_addr[2] == 'c' && proxy_addr[3] == 'k')
+		{
+//			printf("Proxy type: SOCKS\n");
+			curl_easy_setopt(curl_handle, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+		}
+		else
+		{
+//			printf("Proxy type: HTTP\n");
+			curl_easy_setopt(curl_handle, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+		}
+	}
 //	curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
 }
 
