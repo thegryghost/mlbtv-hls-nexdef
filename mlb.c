@@ -178,6 +178,16 @@ size_t mlb_get_url_curl(char *url, char **v, char * proxy)
 				if (proxy && strlen(proxy) > 5)
 				{
 					curl_easy_setopt(curl_handle, CURLOPT_PROXY, proxy);
+					if (proxy[0] == 's' && proxy[1] == 'o' && proxy[2] == 'c' && proxy[3] == 'k')
+					{
+						printf("[MLB] Proxy type: SOCKS\n");
+						curl_easy_setopt(curl_handle, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+					}
+					else
+					{
+						printf("[MLB] Proxy type: HTTP\n");
+						curl_easy_setopt(curl_handle, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+					}
 				}
 				curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 5);
 				curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 60);
