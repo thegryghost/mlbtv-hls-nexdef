@@ -1022,40 +1022,7 @@ void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 //					else
 //						printf("[MLB] Valid M3U8\n");
 				break;
-/*
-				case HLS_DATETIME_POS:
-				{
-					if (strncmp(line, HLS_DATETIME_MARKER, strlen(HLS_DATETIME_MARKER)) == 0)
-					{
-						uint32_t t = 0;
-						char *tmp = line + strlen(HLS_DATETIME_MARKER);
-						char *tmp2 = line + strlen(HLS_DATETIME_MARKER) + 11;
-						struct tm tm;
-						t = _parse_hhmmss(tmp2);
-//						printf("LINE: %s (%d)\n", tmp2, t);
-						if (strptime(tmp, MLB_HLS_TIME_FORMAT, &tm) != 0)
-							stream->start_time = mktime(&tm);
-						else
-							printf("strptime . ERRORRORORORORO\n");
 
-						if (!master->start_from_playlist)
-						{
-							master->start_from_playlist = t;
-							printf("[MLB] Playlist start: %d\n", master->start_from_playlist);
-						}
-
-//						printf("[MLB] ear: %d; month: %d; hour: %d; min: %d; sec: %d\n", 1900 +  tm.tm_year, 1+tm.tm_mon, tm.tm_hour, tm.tm_min, tm.tm_sec);
-					}
-				}
-				break;
-
-				case HLS_FIRSTKEY_POS:
-					if (strncmp(line, HLS_KEY_MARKER, strlen(HLS_KEY_MARKER)) == 0)
-					{
-						mlb_process_stream_key(stream, line, stream->line_pos);
-					}
-				break;
-*/
 				default:
 					if (line[0] == '#' && line[1] == 'E' && line[2] == 'X' && line[3] == 'T')
 					{
@@ -1093,7 +1060,7 @@ void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 								if (!master->start_from_playlist)
 								{
 									master->start_from_playlist = t;
-									printf("[MLB] Playlist start: %d\n", master->start_from_playlist);
+									printf("[MLB] Playlist start: %d (specified start: %d)\n", master->start_from_playlist, master->args->start_from_user);
 								}
 							}
 							else if (strncmp(line, HLS_KEY_MARKER, strlen(HLS_KEY_MARKER)) == 0)
@@ -1502,7 +1469,9 @@ int main (int argc, char *argv[])
 						{
 							uint32_t diff = master->args->start_from_user - master->start_from_playlist;
 							uint32_t diff2 = diff/master->streams[i].seg_time;
-//							printf("[MLB] ##### start_from_playlist: %d -- %d -- %d\n", diff,  diff2, master->streams[i].line_count);
+							if (!diff2)
+								diff2 = 1;
+							printf("[MLB] ##### start_from_playlist: %d -- %d -- %d\n", diff,  diff2, master->streams[i].line_count);
 
 							if (master->streams[i].line_count > (diff2*1.5))
 							{
