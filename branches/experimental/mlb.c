@@ -1022,7 +1022,7 @@ void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 //					else
 //						printf("[MLB] Valid M3U8\n");
 				break;
-
+/*
 				case HLS_DATETIME_POS:
 				{
 					if (strncmp(line, HLS_DATETIME_MARKER, strlen(HLS_DATETIME_MARKER)) == 0)
@@ -1055,7 +1055,7 @@ void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 						mlb_process_stream_key(stream, line, stream->line_pos);
 					}
 				break;
-
+*/
 				default:
 					if (line[0] == '#' && line[1] == 'E' && line[2] == 'X' && line[3] == 'T')
 					{
@@ -1075,8 +1075,34 @@ void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 							stream->seg_time = atoi(line + strlen(HLS_SEGMENT_LEN_MARKER));
 //							printf("[MLB] Segment time: %d (bw: %d)\n", stream->seg_time, stream->bandwidth);
 						}
-						else
+						else if (stream->line_pos < 10)
 						{
+							if (strncmp(line, HLS_DATETIME_MARKER, strlen(HLS_DATETIME_MARKER)) == 0)
+							{
+								uint32_t t = 0;
+								char *tmp = line + strlen(HLS_DATETIME_MARKER);
+								char *tmp2 = line + strlen(HLS_DATETIME_MARKER) + 11;
+								struct tm tm;
+								t = _parse_hhmmss(tmp2);
+//								printf("LINE: %s (%d)\n", tmp2, t);
+								if (strptime(tmp, MLB_HLS_TIME_FORMAT, &tm) != 0)
+									stream->start_time = mktime(&tm);
+								else
+									printf("strptime . ERRORRORORORORO\n");
+	
+								if (!master->start_from_playlist)
+								{
+									master->start_from_playlist = t;
+									printf("[MLB] Playlist start: %d\n", master->start_from_playlist);
+								}
+							}
+							else if (strncmp(line, HLS_KEY_MARKER, strlen(HLS_KEY_MARKER)) == 0)
+							{
+								mlb_process_stream_key(stream, line, stream->line_pos);
+							}
+
+
+		//							printf("[MLB] ear: %d; month: %d; hour: %d; min: %d; sec: %d\n", 1900 +  tm.tm_year, 1+tm.tm_mon, tm.tm_hour, tm.tm_min, tm.tm_sec);						}	
 //							printf("HERE: %s\n", line);
 						}
 					}
