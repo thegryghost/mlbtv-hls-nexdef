@@ -1464,7 +1464,7 @@ int main (int argc, char *argv[])
 					if (!master->current_seg_line)
 					{
 						if (master->start_from_playlist &&  master->args->start_from_user &&
-							(master->args->start_from_user > master->start_from_playlist) &&
+							(master->args->start_from_user >= master->start_from_playlist) &&
 							master->streams[i].seg_time)
 						{
 							uint32_t diff = master->args->start_from_user - master->start_from_playlist;
