@@ -1463,7 +1463,7 @@ int main (int argc, char *argv[])
 					//master->current_seg_line = master->streams[i].iv_keys[master->streams[i].iv_count-2].pos;
 					if (!master->current_seg_line)
 					{
-						if (master->args->start_from_user < master->start_from_playlist)
+						if (master->args->start_from_user && master->args->start_from_user < master->start_from_playlist)
 							master->args->start_from_user += 86400;
 							
 
