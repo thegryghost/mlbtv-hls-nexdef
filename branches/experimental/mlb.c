@@ -1056,10 +1056,14 @@ void mlb_process_streams(MLB_HLS_STREAM_URL *stream)
 									stream->start_time = mktime(&tm);
 								else
 									printf("strptime . ERRORRORORORORO\n");
-	
+
 								if (!master->start_from_playlist)
 								{
-									master->start_from_playlist = t;
+									if (t)
+										master->start_from_playlist = t;
+									else
+										master->start_from_playlist = 1;
+
 									printf("[MLB] Playlist start: %d (specified start: %d)\n", master->start_from_playlist, master->args->start_from_user);
 								}
 							}
