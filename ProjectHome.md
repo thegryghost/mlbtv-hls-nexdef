@@ -1,0 +1,1 @@
+A C App that uses cURL and OpenSSL to implement a rudimentary HLS client that allows a user to connect to and watch MLB.tv's NexDef streams.
