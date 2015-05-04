@@ -1484,12 +1484,18 @@ int main (int argc, char *argv[])
 
 							if (master->streams[i].line_count > (diff2*1.5))
 							{
-								int s, q=0;
+								int s, q=0, k=0;
 								char tmp_str[MAX_STR_LEN] = {0};
 
 								for(s=0; s< master->streams[i].line_count; s++)
 								{
 									mlb_stream_getline(&master->streams[i], s, (char*)&tmp_str, MAX_STR_LEN);
+									if (tmp_str[0] == '#' && tmp_str[1] == 'E' && tmp_str[2] =='X' && tmp_str[3] =='T' &&
+											tmp_str[4] =='-' && tmp_str[5] =='X' &&  tmp_str[6] =='-' && tmp_str[7] =='K' &&
+										tmp_str[8] =='E' && tmp_str[9] =='Y' &&  tmp_str[10] ==':') // check if the temp string starts "#EXT-X-KEY:"
+									{
+									k = s;
+									}
 									if (tmp_str[0] == '#' && tmp_str[1] == 'E' && tmp_str[2] =='X' && tmp_str[3] =='T' &&
 										tmp_str[4] =='I' && tmp_str[5] =='N' &&  tmp_str[6] =='F' && tmp_str[7] ==':')
 									{
@@ -1497,7 +1503,8 @@ int main (int argc, char *argv[])
 										if (q == diff2)
 										{
 //											printf("OFFSET!! %d (%s)\n", s, tmp_str);
-											master->current_seg_line = s+1;
+											master->current_seg_line = k;
+											//master->current_seg_line = s+1;
 											break;
 										}
 									}
